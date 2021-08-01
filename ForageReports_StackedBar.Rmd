@@ -233,38 +233,31 @@ cumYG_plot <- ggplot()+
 
 ```{r echo = FALSE, fig.width=10}
 plot_df <- params$main_df %>%
-  select(c(year, `At-risk` = classAtRisk, Intact = classIntact)) %>%
+  mutate(coniferSum = (classWoodlands + classEncroached + classDispersal + classRecruitment),
+         classIntact = analysisArea - coniferSum,
+         `Woodlands/Forests` = classWoodlands/analysisArea,
+         Encroached = classEncroached/analysisArea,
+         Dispersal = classDispersal/analysisArea,
+         Recruitment = classRecruitment/analysisArea,
+         Intact = classIntact/analysisArea) %>%
+  select(c(year, `Woodlands/Forests`, Encroached, Recruitment, Dispersal, Intact)) %>%
   melt(id = 'year')
 
-atrisk_plot <- ggplot()+
-  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), position = position_dodge(width = 0.9), stat = "identity")+
-  labs(y = 'Cover (acres)', title = 'Figure 5a: Intact and at-risk area')+
+ggplot()+
+  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value*100), position = "stack", stat = "identity")+
+  labs(y = 'Cover (%)', title = 'Figure 5: Encroachment and dispersal plot')+
   scale_fill_manual(
         values = c(
-          `At-risk` = "#FDE64B",
+          `Woodlands/Forests` = "grey40",
+          Encroached = "#CB4C4E",
+          Recruitment = "#FF9E44",
+          Dispersal = "#FDE64B",
           Intact = "#4F963C"))+
-  scale_y_continuous(labels = comma)+
   theme_minimal()+
   theme(legend.title = element_blank(),
         legend.position="bottom",
         axis.title.x=element_blank(),
         plot.title.position = "plot")
-
-atrisk_plot_stack <-  ggplot()+
-  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), position = "stack", stat = "identity")+
-  labs(y = 'Cover (acres)', title = 'Figure 5b: Intact and at-risk area')+
-  scale_fill_manual(
-        values = c(
-          `At-risk` = "#FDE64B",
-          Intact = "#4F963C"))+
-  scale_y_continuous(labels = comma)+
-  theme_minimal()+
-  theme(legend.title = element_blank(),
-        legend.position="bottom",
-        axis.title.x=element_blank(),
-        plot.title.position = "plot")
-
-(atrisk_plot | atrisk_plot_stack)
 ```
 
 <div style="margin-bottom:35px;">

@@ -8,15 +8,14 @@ library(stringr)
 
 #Read-in and filter data
 # Read in production csv and filter for county of interest
-ctys_df <- read_csv('data/csv/Agricultural_Statistics_County_Exported_20210730.csv') %>%
+ctys_df <- read_csv('data/csv/Agricultural_Statistics_County_Exported_20210625.csv') %>%
   mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),
          biomass = biomass / 2000,
          yieldgap = yieldgap / 2000,
          classWoodlands = classWoodlands * 0.000247105,
-         classModCover = classModCover * 0.000247105,
-         classLowCover = classLowCover * 0.000247105,
-         classAtRisk = classAtRisk * 0.000247105,
-         classIntact = classIntact * 0.000247105,
+         classEncroached = classEncroached * 0.000247105,
+         classRecruitment = classRecruitment * 0.000247105,
+         classDispersal = classDispersal * 0.000247105,
          countyArea = countyArea * 0.000247105,
          analysisArea = analysisArea * 0.000247105,
          treeArea = treeArea * 0.000247105,
@@ -54,7 +53,7 @@ stas_sf <- stas_sf %>%
   filter(STATEFP %in% stas_fp_v) %>%
   left_join(stas_zoom_df, by = 'STUSPS') 
 
-remove(sta_fp, cty_fp, cty_id, i, ctys_fp_df, stas_zoom_df)
+remove(sta_fp, cty_fp, cty_id, i, ctys_fp_df)
 
 # Get current year to pass to the rmarkdown script as a parameter 
 current_year = max(ctys_df$year)
@@ -68,8 +67,9 @@ ctys_yieldgap_df <- ctys_df %>%
   ungroup() %>%
   select(c(FIPS = COUNTYID, yieldgap_2019 = yieldgap, yieldgap_cumulative, yieldgap_2019_norm))
 
+
 # ---------------------- Nested loop to generate state and county reports -----------------------------
-for(i in '31'){ #stas_fp_v 
+for(i in '04'){ #stas_fp_v 
   
   # Subset state sf object for current state
   sta_sf <- filter(stas_sf, STATEFP == i) 
@@ -103,10 +103,9 @@ for(i in '31'){ #stas_fp_v
            biomass = sum(biomass),
            yieldgap = sum(yieldgap),
            classWoodlands = sum(classWoodlands),
-           classModCover = sum(classModCover),
-           classLowCover = sum(classLowCover),
-           classAtRisk = sum(classAtRisk),
-           classIntact = sum(classIntact),
+           classEncroached = sum(classEncroached),
+           classRecruitment = sum(classRecruitment),
+           classDispersal = sum(classDispersal),
            analysisArea = sum(analysisArea),
            totalArea = sum(countyArea)) %>%
     select(-c(COUNTYFP, NAME, treedArea, COUNTYID, countyArea)) %>%
@@ -118,8 +117,8 @@ for(i in '31'){ #stas_fp_v
     #generate rmarkdown report
   sta_csv_path = paste(here(), '/', sta_dir, 'State.csv', sep = '')
   write_csv(sta_df, path = sta_csv_path)
-  rmarkdown::render("Scripts/ForageReports.Rmd",
-                    output_file = paste(here(), '/', sta_dir, '/Index.html', sep = ''),
+  rmarkdown::render("Scripts/StateCounty_wMap.Rmd",
+                    output_file = paste(here(), '/', sta_dir, 'Index.html', sep = ''),
                     params = list(new_title = sta_name,
                                   main_df = sta_df,
                                   cty_sf = NULL,
@@ -157,7 +156,7 @@ for(i in '31'){ #stas_fp_v
         #generate rmarkdown report
         cty_csv_path <- paste(here(), '/', sta_dir, cty_name_s, '/County.csv', sep = '')
         write_csv(cty_df %>% select(c(1:5,8:9)), path = cty_csv_path) #FIX THIS
-        rmarkdown::render("Scripts/ForageReports.Rmd",
+        rmarkdown::render("Scripts/StateCounty_wMap.Rmd",
                           output_file = paste(here(), '/', sta_dir, cty_name_s, '/Index.html', sep = ''),
                           params = list(new_title = loc_name,
                                         main_df = cty_df,
@@ -169,3 +168,4 @@ for(i in '31'){ #stas_fp_v
                                         type = 'County'))
       }
  }
+
