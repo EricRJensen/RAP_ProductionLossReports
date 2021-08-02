@@ -1,4 +1,6 @@
 ---
+title: "`r params$new_title` tree cover change and rangeland production report"
+author: 'Report derived from the Rangeland Analysis Platform'
 params:
   new_title: params$new_title
   main_df: params$main_df
@@ -8,9 +10,9 @@ params:
   current_year: params$current_year
   rap_url: params$rap_url
   type: params$type
-title: "`r params$new_title`"
-author: "`r params$type`-level woody expansion and rangeland production report derived from the Rangeland Analysis Platform" 
-output: html_document
+output: pdf_document
+always_allow_html: true
+
 ---
 
 ```{r setup, include=FALSE}
@@ -27,16 +29,14 @@ library(patchwork)
 
 knitr::opts_chunk$set(echo = TRUE, root.dir = here())
 ```
-#### [`r ifelse(grepl(",", params$new_title) == TRUE, str_split(params$new_title, ',')[[1]][2], params$new_title)`](../Index.html) `r ifelse(params$type == 'County', paste('>',str_split(loc_name, ',')[[1]][1], sep = ' '), '')`
 
 <div style="margin-bottom:30px;">
 </div>
   
 ## `r paste(params$type, ' map')` 
-Click any county on the map below to see its report
+Click any county on the map below to access its report.  
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
-scale_range <- c(-max(abs(params$sta_ctys_sf$yieldgap_2019_norm)), 
-                 max(abs(params$sta_ctys_sf$yieldgap_2019_norm)))
+scale_range <- c(-1, 1)
 
 pal <- colorNumeric("RdBu", domain = scale_range)
 
@@ -49,16 +49,16 @@ if (params$type == 'County'){
                 color = '#5e5e5e', 
                 opacity = 1, 
                 weight = 4) %>%
-    addPolygons(data = params$sta_ctys_sf, 
-                fillColor = ~pal(-yieldgap_2019_norm), 
-                color = '#5e5e5e', 
-                weight = 1.5, 
-                opacity = 1, 
-                label = ~NAMELSAD, 
-                popup = paste(sta_ctys_sf$NAMELSAD, "<BR>", "<a href =   '",sta_ctys_sf$up_path, "' target = '_self'>", 'See the report </a>'),
-                labelOptions = labelOptions(style = list(
-                                              "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                              "font-size" = "16px"))) %>%
+     addPolygons(data = params$sta_ctys_sf, 
+                 fillColor = ~pal(is10uw), 
+                 color = '#5e5e5e', 
+                 weight = 1.5, 
+                 opacity = 1, 
+                 label = ~NAMELSAD, 
+                 popup = paste(sta_ctys_sf$NAMELSAD, "<BR>", "<a href =   '",sta_ctys_sf$up_path, "' target = '_self'>", 'See the report </a>'),
+                 labelOptions = labelOptions(style = list(
+                                               "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                                               "font-size" = "16px")))  %>%
     addPolygons(data = params$cty_sf, 
                 fillColor = "#00000000", 
                 color = '#FF0000', 
@@ -67,46 +67,48 @@ if (params$type == 'County'){
                 fillOpacity = 1, 
                 stroke = TRUE, 
                 smoothFactor = 0.5,) %>%
-    addLegend(values = scale_range, 
-              group = "circles", 
-              position = "bottomleft",
-              title = paste("Production gains/</br>losses from tree </br>change in ", params$current_year, sep = ''),  
-              colors = c('#b88291','#de9d9f','#fcded1','#ffffff','#d9eaf3','#a2c4dd','#849bb4'),
-              labels= c("Most losses", "", "", "No change", "", "", "Most gains")) %>%
+     addLegend(values = scale_range, 
+               group = "circles", 
+               title = 'Rangeland area trend due </br>to tree cover change', 
+               position = "bottomleft", 
+               colors = c('#849bb4', '#a2c4dd', '#d9eaf3', '#ffffff','#fcded1', '#de9d9f', '#b88291'),
+               labels= c("Increase", "", "", "", "", "", "Decrease")) %>%
     setMapWidgetStyle(list(background= "white")) 
   
 } else if (params$type == 'State') {
-  leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = zoom_level, maxZoom = zoom_level, dragging = FALSE, attributionControl=FALSE)) %>%
-    addPolygons(data = params$sta_sf, 
-                fillColor = "#00000000", 
-                color = '#5e5e5e', 
-                opacity = 1, 
-                weight = 4) %>%
-    addPolygons(data = params$sta_ctys_sf, 
-                fillColor = ~pal(-yieldgap_2019_norm), 
-                color = '#5e5e5e', 
-                weight = 1.5, 
-                opacity = 1, 
-                label = ~NAMELSAD, 
-                popup = paste(sta_ctys_sf$NAMELSAD, "<BR>", "<a href =   '",sta_ctys_sf$dn_path, "' target = '_self'>", 'See the report </a>'),
-                labelOptions = labelOptions(style = list(
-                                              "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                              "font-size" = "16px")))  %>%
-    addLegend(values = scale_range, 
-              group = "circles", 
-              title = paste("Production gains/</br>losses from tree </br>change in ", params$current_year, sep = ''), 
-              position = "bottomleft", 
-              colors = c('#b88291','#de9d9f','#fcded1','#ffffff','#d9eaf3','#a2c4dd','#849bb4'),
-              labels= c("Most losses", "", "", "No change", "", "", "Most gains")) %>%
-    setMapWidgetStyle(list(background= "white"))
+    leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = zoom_level, maxZoom = zoom_level, dragging = FALSE, attributionControl=FALSE)) %>%
+     addPolygons(data = params$sta_sf, 
+                 fillColor = "#00000000", 
+                 color = '#5e5e5e', 
+                 opacity = 1, 
+                 weight = 4) %>%
+     addPolygons(data = params$sta_ctys_sf, 
+                 fillColor = ~pal(is10uw), 
+                 color = '#5e5e5e', 
+                 weight = 1.5, 
+                 opacity = 1, 
+                 label = ~NAMELSAD, 
+                 popup = paste(sta_ctys_sf$NAMELSAD, "<BR>", "<a href =   '",sta_ctys_sf$dn_path, "' target = '_self'>", 'See the report </a>'),
+                 labelOptions = labelOptions(style = list(
+                                               "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                                               "font-size" = "16px")))  %>%
+     addLegend(values = scale_range, 
+               group = "circles", 
+               title = 'Rangeland area trend due </br>to tree cover change', 
+               position = "bottomleft", 
+               colors = c('#849bb4', '#a2c4dd', '#d9eaf3', '#ffffff','#fcded1', '#de9d9f', '#b88291'),
+               labels= c("Increase", "", "", "", "", "", "Decrease")) %>%
+     setMapWidgetStyle(list(background= "white"))
   }
 ```
 
 
 |
 |
-## Summary statistics for `r params$new_title`
-#### State and county summary
+## Summary statistics for `r params$new_title`  
+#### State and county summary  
+_  
+
 ```{r echo = FALSE, warning = FALSE}
 char_df <- tibble(init = 10)
 char_df[, 'Total area'] = paste(as.character(round(params$main_df$totalArea[1]), 0), 'acres')
@@ -121,13 +123,19 @@ char_df <- char_df %>%
          Blank = c('','','')) %>%
   select(c(Variable = Var1, Value,Blank))
 
-kable(char_df, col.names = NULL) %>%
+kable(char_df, col.names = NULL, booktabs = FALSE) %>%
   column_spec(1, width = "15cm") %>%
   column_spec(2, width = "5cm") %>%
-  column_spec(3, width = "5cm")
+  column_spec(3, width = "5cm") %>%
+  row_spec(1:3, hline_after = TRUE) %>%
+  kable_styling()
 ```
 
-#### Tree cover and herbaceous production summary
+
+
+#### Tree cover and herbaceous production summary  
+_  
+
 ```{r echo = FALSE, warning = FALSE}
 # Statistics for report
 figure_v <- c("[Figure 1](#tree-cover-and-herbaceous-production)",
@@ -158,7 +166,9 @@ stat_df <- stat_df %>%
 kable(stat_df, col.names = NULL) %>%
   column_spec(1, width = "15cm") %>%
   column_spec(2, width = "5cm") %>%
-  column_spec(3, width = "5cm")
+  column_spec(3, width = "5cm") %>%
+  row_spec(1:6, hline_after = TRUE) %>%
+  kable_styling()
 ```
 
 <div style="margin-bottom:15px;">
@@ -166,8 +176,10 @@ kable(stat_df, col.names = NULL) %>%
 
 |
 |
-## Tree cover and herbaceous production plots for `r params$new_title`
-#### Tree cover and herbaceous production
+## Tree cover and herbaceous production plots for `r params$new_title`  
+#### Tree cover and herbaceous production  
+_  
+
 ```{r echo = FALSE, fig.width=10}
 # Annual production plot
 prod_plot <- ggplot()+
@@ -199,7 +211,9 @@ tree_plot <- ggplot()+
 <div style="margin-bottom:50px;">
 </div>
 
-#### Herbaceous production gains/losses resulting from tree cover change
+#### Herbaceous production gains/losses resulting from tree cover change  
+_  
+
 ```{r echo = FALSE, fig.width=10}
 annYG_plot <- ggplot()+
   geom_line(params$main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 1)+
@@ -230,13 +244,13 @@ cumYG_plot <- ggplot()+
 
 <div style="margin-bottom:50px;">
 </div>
-
-```{r echo = FALSE, fig.width=10}
+  
+```{r echo = FALSE, warning = FALSE, fig.width=10}
 plot_df <- params$main_df %>%
   select(c(year, `At-risk` = classAtRisk, Intact = classIntact)) %>%
   melt(id = 'year')
 
-atrisk_plot <- ggplot()+
+ggplot()+
   geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), position = position_dodge(width = 0.9), stat = "identity")+
   labs(y = 'Cover (acres)', title = 'Figure 5a: Intact and at-risk area')+
   scale_fill_manual(
@@ -249,29 +263,13 @@ atrisk_plot <- ggplot()+
         legend.position="bottom",
         axis.title.x=element_blank(),
         plot.title.position = "plot")
-
-atrisk_plot_stack <-  ggplot()+
-  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), position = "stack", stat = "identity")+
-  labs(y = 'Cover (acres)', title = 'Figure 5b: Intact and at-risk area')+
-  scale_fill_manual(
-        values = c(
-          `At-risk` = "#FDE64B",
-          Intact = "#4F963C"))+
-  scale_y_continuous(labels = comma)+
-  theme_minimal()+
-  theme(legend.title = element_blank(),
-        legend.position="bottom",
-        axis.title.x=element_blank(),
-        plot.title.position = "plot")
-
-(atrisk_plot | atrisk_plot_stack)
 ```
 
 <div style="margin-bottom:35px;">
 </div>
 
 ## Reference
-Access the complete data that from which this report is derived:  
+Access the complete data that from which this report is derived: 
 
 * [View tree cover data in the Rangeland Analysis Platform web application](`r params$rap_url`){target="_blank"}  
 * [Download complete tree cover change time-series CSV](`r ifelse(params$type == 'County', './County.csv', './State.csv')`)  

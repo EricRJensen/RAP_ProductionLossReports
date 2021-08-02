@@ -1,0 +1,51 @@
+---
+title: "Tree cover change and rangeland production reports"
+author: "State and county reports derived from the Rangeland Analysis Platform" 
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=9, fig.height=7.5) 
+library(tidyverse)
+library(sf)
+library(knitr)
+library(leaflet)
+library(leaflet.extras)
+```
+
+#### Home
+<div style="margin-bottom:30px;"></div>
+
+The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production. These data are available as state and county summaries available in web and pdf formats.  Understanding where tree encroachment drives production losses provides a means to focus private-land conservation where biodiversity conservation intersects with economic sustainability.  
+
+Click on a state below to access these reports.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+stas_sf <- st_read('../data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% 
+  st_transform(4326) %>%
+  filter(STUSPS %in% c('AZ', 'CA', 'CO', 'ID', 'KS', 'MT', 'NE', 'NV', 'NM', 'ND', 'OK', 'OR', 'SD', 'TX', 'UT', 'WA', 'WY')) %>% 
+  select(c(NAME)) %>%
+  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/Index.html', sep = ''))
+
+leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5, dragging = FALSE, attributionControl=FALSE)) %>%
+    addPolygons(data = stas_sf, 
+                fillColor = "#00000000", 
+                color = '#E9E9E9', 
+                opacity = 1, 
+                weight = 1,
+                label = ~NAME, 
+                popup = paste(stas_sf$NAME, "<BR>", "<a href =   '", stas_sf$path, "' target = '_self'>", 'See the report </a>'),
+                labelOptions = labelOptions(style = list(
+                                              "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                                              "font-size" = "16px"))) %>%
+    setMapWidgetStyle(list(background= "white"))  %>%
+    addProviderTiles(providers$GeoportailFrance.orthos)
+```
+
+## Reference:
+* [View tree cover data in the Rangeland Analysis Platform web application.](https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree){target="_blank"}  
+* [Read the pre-print manuscript that supports these reports.](https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract){target="_blank"}  
+* [Learn more about the WLFW strategy on Woodland Expansion in the sagebrush biome.](https://wlfw.rangelands.app/sagebrush/woodland-expansion/){target="_blank"}
+* [Learn more about the WLFW strategy on Woodland Expansion in the Great Plains grassland biome.](https://wlfw.rangelands.app/great-plains/woodland-expansion/){target="_blank"}
+* Learn more about how we calculate the metrics in these reports here.
+
