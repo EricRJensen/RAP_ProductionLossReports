@@ -152,8 +152,8 @@ stat_df[, paste('Tree cover in', as.character(params$current_year))] <- paste(as
 stat_df[, paste('Tree cover change since 1990')] <- paste(as.character(round((tail(params$main_df$treeArea, n = 1)) - (head(params$main_df$treeArea, n = 1)), 0)), 'acres')
 stat_df[, paste('Tree cover percent in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeCover,2)),'%', sep = '')
 stat_df[, paste('Herbaceous production in', as.character(params$current_year))] = paste(as.character(round(main_df_rec$biomass,0)), 'tons')
-stat_df[, paste('Herbaceous production gains/losses resulting from tree expansion in', as.character(params$current_year))] <- paste(as.character(-round(main_df_rec$yieldgap,0)), 'tons')
-stat_df[, paste('Herbaceous production gains/losses resulting from tree expansion since 1990')] <- paste(as.character(-round(sum(params$main_df$yieldgap),0)), 'tons') 
+stat_df[, paste('Herbaceous production gains/losses resulting from tree cover change in', as.character(params$current_year))] <- paste(as.character(-round(main_df_rec$yieldgap,0)), 'tons')
+stat_df[, paste('Herbaceous production gains/losses resulting from tree cover change since 1990')] <- paste(as.character(-round(sum(params$main_df$yieldgap),0)), 'tons') 
 stat_df <- stat_df[,2:7]
 
 stat_df <- stat_df %>%

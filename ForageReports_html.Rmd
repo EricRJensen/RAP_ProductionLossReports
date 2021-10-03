@@ -1,24 +1,36 @@
 ---
 title: "`r params$new_title`"
-author: '`r params$type`-level tree cover change and rangeland production report derived
-  from the Rangeland Analysis Platform'
+author: 'Tree cover change and rangeland production report derived from the Rangeland Analysis Platform'
 params:
   new_title: params$new_title
   main_df: params$main_df
   cty_sf: params$cty_sf
   sta_sf: params$sta_sf
+  sta_rast: params$sta_rast
   sta_ctys_sf: params$sta_ctys_sf
   current_year: params$current_year
   rap_url: params$rap_url
+  main_dir: params$main_dir
   type: params$type
-output: html_document
-
+output: 
+  html_document
 ---
+
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-family: Open Sans; 
+  }
+</style>
+
+
 
 ```{r setup, include=FALSE}
 library(here)
 library(tidyverse)
 library(sf)
+library(raster)
 library(knitr)
 require(scales)
 library(reshape2)
@@ -26,6 +38,11 @@ library(leaflet)
 library(leaflet.extras)
 library(kableExtra)
 library(patchwork)
+library(htmltools)
+library(htmlwidgets)
+library(bsplus)
+library(tableHTML)
+library(xtable)
 
 knitr::opts_chunk$set(echo = TRUE, root.dir = here())
 ```
@@ -44,7 +61,6 @@ state_link = ifelse(params$type == 'County',
                     paste('-- [', str_split(params$new_title, ',')[[1]][2], '](../index.html)', ' -- '),
                     paste('--',params$new_title))
 
-
 cty_name = ifelse(params$type == 'County', str_split(loc_name, ',')[[1]][1], '')
 ```
 #### [Home](`r home_path`) `r state_link` `r cty_name`
@@ -52,187 +68,292 @@ cty_name = ifelse(params$type == 'County', str_split(loc_name, ',')[[1]][1], '')
 <div style="margin-bottom:30px;">
 </div>
 
-##### ***[Click here to download this report as a PDF.](./index.pdf)***
+> ##### ***[Click here to download this report as a PDF.](./index.pdf)***
   
-## `r paste(params$type, ' map')` 
+## Rangeland vulnerability and production loss map
 Click any county on the map below to access its report.
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
-scale_range <- c(-1, 1)
 
-pal <- colorNumeric("RdBu", domain = scale_range)
+# --------- Preliminaries -----------
 
+# Get list of county paths
+sta_ctys_sf <- params$sta_ctys_sf
+
+# Scale ranges and palettes for controlling data visualization
+scale_range <- c(0, max(sta_ctys_sf$yieldgap_2019))
+pal_rast = colorNumeric(palette = c('#FFFFFF', '#00B050','#FDE64B','#FDE64B','#FF0000','grey40', 'grey40'), domain = values(params$sta_rast), na.color = '#FFFFFF')
+pal <- colorNumeric("YlOrRd", domain = scale_range, na.color = '#FFFFFF')
+
+# Function to generate labels
+library(htmltools)
+labs <- lapply(seq(nrow(sta_ctys_sf)), function(i) {
+  lab<- paste0('<b>', sta_ctys_sf[i, "NAMELSAD"], '</b><br>',
+               paste(as.character(format(round(as.numeric(sta_ctys_sf[i, "yieldgap_2019"]), 0), big.mark = ',')), 'tons production loss in 2019'))
+  lab[1]})
+
+# Zoom level to control map display
 zoom_level = params$sta_sf$zoom %>% unlist()
+
+
+# --------- On-click functionality -------------
+
+cty_paths <- if (params$type == 'County'){sta_ctys_sf$up_path
+  } else if (params$type == 'State') {sta_ctys_sf$dn_path}
+
+# Concatenate the Javascript string by looping over each county feature in the state
+jsOnClick_srt <- paste('
+  function(el, x) {
+    var marker = document.getElementsByClassName("leaflet-interactive");')
+
+jsOnClick_mid <- as.character('')
+for(i in 1:length(cty_paths)){
+  url = cty_paths[i]
+  i_js = i
+  js_str <- paste('marker[', i_js, '].onclick=function(){window.open(\"', url, '\", \"_self\");};', sep = '')
+  jsOnClick_mid <- paste(jsOnClick_mid, js_str)
+}
+
+jsOnClick_end <- '}'
+
+jsOnClick <- paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
+
+
+# ---------- Mapping -----------
 
 if (params$type == 'County'){
   leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = zoom_level, maxZoom = zoom_level, dragging = FALSE, attributionControl=FALSE)) %>%
-    addPolygons(data = params$sta_sf, 
-                fillColor = "#00000000", 
-                color = '#5e5e5e', 
-                opacity = 1, 
-                weight = 4) %>%
-     addPolygons(data = params$sta_ctys_sf, 
-                 fillColor = ~pal(is10uw), 
-                 color = '#5e5e5e', 
-                 weight = 1.5, 
-                 opacity = 1, 
-                 label = ~NAMELSAD, 
-                 popup = paste(sta_ctys_sf$NAMELSAD, "<BR>", "<a href =   '",sta_ctys_sf$up_path, "' target = '_self'>", 'See the report </a>'),
-                 labelOptions = labelOptions(style = list(
-                                               "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                               "font-size" = "16px")))  %>%
-    addPolygons(data = params$cty_sf, 
-                fillColor = "#00000000", 
-                color = '#FF0000', 
-                weight = 4, 
-                opacity = 1, 
-                fillOpacity = 1, 
-                stroke = TRUE, 
-                smoothFactor = 0.5,) %>%
-     addLegend(values = scale_range, 
-               group = "circles", 
-               title = 'Rangeland area trend due </br>to tree cover change', 
-               position = "bottomleft", 
-               colors = c('#849bb4', '#a2c4dd', '#d9eaf3', '#ffffff','#fcded1', '#de9d9f', '#b88291'),
-               labels= c("Increase", "", "", "", "", "", "Decrease")) %>%
-    setMapWidgetStyle(list(background= "white")) 
-  
+      addMapPane("poly_chor", zIndex = 410) %>% # shown bottom
+      addMapPane("poly_link", zIndex = 420) %>% # shown middle
+      addMapPane("poly_cnty", zIndex = 430) %>% # shown top
+      # Raster image
+      addRasterImage(params$sta_rast,
+                     colors = pal_rast,
+                     maxBytes = 10 * 1024 * 1024,
+                     group = 'Rangeland vulnerability') %>%
+      # County choropleths
+      addPolygons(data = sta_ctys_sf,
+                  fillColor = ~pal(yieldgap_2019),
+                  label = lapply(labs, htmltools::HTML),
+                  color = '#FFFFFFFF',
+                  weight = 0,
+                  opacity = 1,
+                  group = 'Production loss in 2019',
+                  labelOptions = labelOptions(style = list(
+                    "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                    "font-size" = "13px",
+                    "margin" = "0px")),
+                  options = pathOptions(pane = "poly_chor")) %>%
+      # Raster legend
+      addLegend(layerId = 'Rangeland vulnerability',
+                labels = c('Intact rangeland', 'Intact rangeland, at risk', 'Low/moderate tree cover', 'Forest/Woodland'),
+                title = 'Rangeland vulnerability',
+                position = 'bottomleft',
+                colors = c('#00B050','#FDE64B','#FF0000','grey'),
+                group = 'Rangeland vulnerability') %>%
+      # State polygon
+      addPolygons(data = params$sta_sf,
+                  fillColor = "#FFFFFFFF",
+                  color = '#5e5e5e',
+                  opacity = 1,
+                  weight = 4) %>%
+      # County polygons
+      addPolygons(data = sta_ctys_sf,
+                  fillColor = "#00000000",
+                  color = '#5e5e5e',
+                  weight = 1.5,
+                  opacity = 1,
+                  label = lapply(labs, htmltools::HTML),
+                  labelOptions = labelOptions(style = list(
+                    "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                    "font-size" = "13px",
+                    "margin" = "0px")),
+                  options = pathOptions(pane = "poly_link"))  %>%
+      # County polygon
+      addPolygons(data = params$cty_sf,
+                  fillColor = "#00000000",
+                  color = '#FF0000',
+                  weight = 4,
+                  opacity = 1,
+                  fillOpacity = 1,
+                  stroke = TRUE,
+                  smoothFactor = 0.5,
+                  labelOptions = labelOptions(style = list(
+                    "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                    "font-size" = "13px",
+                    "margin" = "0px")),
+                  options = pathOptions(pane = "poly_cnty")) %>%
+      addLegend(values = scale_range,
+                group = "circles",
+                title = 'Rangeland area trend due </br>to tree cover change',
+                position = "bottomleft",
+                colors = c('#849bb4', '#a2c4dd', '#d9eaf3', '#ffffff','#fcded1', '#de9d9f', '#b88291'),
+                labels= c("Increase", "", "", "", "", "", "Decrease")) %>%
+      # County choropleth legend
+      addLegend(labels= c(paste(as.character(round(max(sta_ctys_sf$yieldgap_2019),-2)), 'tons'), "", "", "0 tons"),
+                values = scale_range,
+                title = 'Production loss in 2019',
+                position = "bottomleft",
+                colors = c('#b88291', '#de9d9f', '#fcded1', '#ffffff'),
+                group = 'Production loss in 2019') %>%
+      addLayersControl(baseGroups = c('Rangeland vulnerability', 'Production loss in 2019'),
+                       options = layersControlOptions(collapsed = FALSE)) %>%
+      # Set on-click and other functionality
+      setMapWidgetStyle(list(background= "white")) %>%
+      htmlwidgets::onRender(jsOnClick) %>%
+      htmlwidgets::onRender("function(el, x) {
+          var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+      
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                if (l.children[0].children[0].innerText == selectedGroup) l.hidden=false;
+              });
+          };
+          updateLegend();
+          this.on('baselayerchange', e => updateLegend());}") %>%
+      htmlwidgets::onRender("(function(){
+          var originalInitTile = L.GridLayer.prototype._initTile
+          L.GridLayer.include({
+              _initTile: function (tile) {
+                  originalInitTile.call(this, tile);
+      
+                  var tileSize = this.getTileSize();
+      
+                  tile.style.width = tileSize.x + 1 + 'px';
+                  tile.style.height = tileSize.y + 1 + 'px';
+                    }
+                });
+            })()")
+
 } else if (params$type == 'State') {
     leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = zoom_level, maxZoom = zoom_level, dragging = FALSE, attributionControl=FALSE)) %>%
-     addPolygons(data = params$sta_sf, 
-                 fillColor = "#00000000", 
-                 color = '#5e5e5e', 
-                 opacity = 1, 
-                 weight = 4) %>%
-     addPolygons(data = params$sta_ctys_sf, 
-                 fillColor = ~pal(is10uw), 
-                 color = '#5e5e5e', 
-                 weight = 1.5, 
-                 opacity = 1, 
-                 label = ~NAMELSAD, 
-                 popup = paste(sta_ctys_sf$NAMELSAD, "<BR>", "<a href =   '",sta_ctys_sf$dn_path, "' target = '_self'>", 'See the report </a>'),
-                 labelOptions = labelOptions(style = list(
-                                               "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                               "font-size" = "16px")))  %>%
-     addLegend(values = scale_range, 
-               group = "circles", 
-               title = 'Rangeland area trend due </br>to tree cover change', 
-               position = "bottomleft", 
-               colors = c('#849bb4', '#a2c4dd', '#d9eaf3', '#ffffff','#fcded1', '#de9d9f', '#b88291'),
-               labels= c("Increase", "", "", "", "", "", "Decrease")) %>%
-     setMapWidgetStyle(list(background= "white"))
+      #Set drawing order for polygon layers
+      addMapPane("poly_chor", zIndex = 410) %>% # shown below
+      addMapPane("poly_link", zIndex = 420) %>% # shown above
+      #Raster image
+      addRasterImage(params$sta_rast,
+                     colors = pal_rast,
+                     maxBytes = 10 * 1024 * 1024,
+                     group = 'Rangeland vulnerability') %>%
+      #County choropleths
+      addPolygons(data = sta_ctys_sf,
+                  fillColor = ~pal(yieldgap_2019),
+                  label = lapply(labs, htmltools::HTML),
+                  color = '#FFFFFF',
+                  weight = 0,
+                  opacity = 1,
+                  group = 'Production loss in 2019',
+                  labelOptions = labelOptions(style = list(
+                    "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                    "font-size" = "13px",
+                    "margin" = "0px")),
+                  options = pathOptions(pane = "poly_chor")) %>%
+      # Raster legend
+      addLegend(layerId = 'Rangeland vulnerability',
+                labels = c('Intact rangeland', 'Intact rangeland, at risk', 'Low/moderate tree cover', 'Forest/Woodland'),
+                title = 'Rangeland vulnerability',
+                position = 'bottomleft',
+                colors = c('#00B050','#FDE64B','#FF0000','grey'),
+                group = 'Rangeland vulnerability') %>%
+      # State polygon
+      addPolygons(data = params$sta_sf,
+                  fillColor = "#FFFFFFFF",
+                  color = '#5e5e5e',
+                  opacity = 1,
+                  weight = 4) %>%
+      # County polygons
+      addPolygons(data = sta_ctys_sf,
+                  fillColor = "#00000000",
+                  color = '#5e5e5e',
+                  weight = 1.5,
+                  opacity = 1,
+                  label = lapply(labs, htmltools::HTML),
+                  labelOptions = labelOptions(style = list(
+                    "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                    "font-size" = "13px",
+                    "margin" = "0px")),
+                  options = pathOptions(pane = "poly_link"))  %>%
+      #County choropleth legend
+      addLegend(labels= c(paste(as.character(round(max(sta_ctys_sf$yieldgap_2019),-2)), 'tons'), "", "", "0 tons"),
+                values = scale_range,
+                title = 'Production loss in 2019',
+                position = "bottomleft",
+                colors = c('#b88291', '#de9d9f', '#fcded1', '#ffffff'),
+                group = 'Production loss in 2019') %>%
+      addLayersControl(baseGroups = c('Rangeland vulnerability', 'Production loss in 2019'),
+                       options = layersControlOptions(collapsed = FALSE)) %>%
+      # Set on-click and other functionality
+      setMapWidgetStyle(list(background= "white")) %>%
+      htmlwidgets::onRender(jsOnClick) %>%
+      htmlwidgets::onRender("function(el, x) {
+          var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+    
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                if (l.children[0].children[0].innerText == selectedGroup) l.hidden=false;
+              });
+          };
+          updateLegend();
+          this.on('baselayerchange', e => updateLegend());}") %>%
+      htmlwidgets::onRender("(function(){
+          var originalInitTile = L.GridLayer.prototype._initTile
+          L.GridLayer.include({
+              _initTile: function (tile) {
+                  originalInitTile.call(this, tile);
+      
+                  var tileSize = this.getTileSize();
+      
+                  tile.style.width = tileSize.x + 1 + 'px';
+                  tile.style.height = tileSize.y + 1 + 'px';
+                    }
+                });
+            })()")
   }
+  
 ```
 
 
-|
-|
-## Summary statistics for `r params$new_title`
-#### State and county summary
-```{r echo = FALSE, warning = FALSE}
-char_df <- tibble(init = 10)
-char_df[, 'Total area'] = paste(as.character(round(params$main_df$totalArea[1]), 0), 'acres')
-char_df[, 'Analysis area'] <- paste(as.character(round(params$main_df$analysisArea[1]), 0), 'acres')
-char_df[, 'Area excluded from analysis'] <- paste(as.character(round(params$main_df$totalArea[1] - params$main_df$analysisArea[1]), 0), 'acres')
-char_df <- char_df[,2:4]
-
-char_df <- char_df %>%
-  t() %>%
-  melt() %>%
-  mutate(Value = prettyNum(value, big.mark = ","),
-         Blank = c('','','')) %>%
-  select(c(Variable = Var1, Value,Blank))
-
-kable(char_df, col.names = NULL, booktabs = FALSE) %>%
-  column_spec(1, width = "15cm") %>%
-  column_spec(2, width = "5cm") %>%
-  column_spec(3, width = "5cm") %>%
-  row_spec(1:3, hline_after = TRUE) %>%
-  kable_styling()
-```
-
-
-
-#### Tree cover and herbaceous production summary
-```{r echo = FALSE, warning = FALSE}
-# Statistics for report
-figure_v <- c("[Figure 1](#tree-cover-and-herbaceous-production)",
-              "[Figure 2](#tree-cover-and-herbaceous-production)", 
-              "", 
-              "", 
-              "[Figure 3](#herbaceous-production-gainslosses-resulting-from-tree-cover-change)", 
-              "[Figure 4](#herbaceous-production-gainslosses-resulting-from-tree-cover-change)")
-main_df_rec <- params$main_df %>%
-  filter(year == params$current_year) 
-
-stat_df <- tibble(init = 10)
-stat_df[, paste('Tree cover in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeArea,0)), 'acres')
-stat_df[, paste('Tree cover change since 1990')] <- paste(as.character(round((tail(params$main_df$treeArea, n = 1)) - (head(params$main_df$treeArea, n = 1)), 0)), 'acres')
-stat_df[, paste('Tree cover percent in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeCover,2)),'%', sep = '')
-stat_df[, paste('Herbaceous production in', as.character(params$current_year))] = paste(as.character(round(main_df_rec$biomass,0)), 'tons')
-stat_df[, paste('Herbaceous production gains/losses resulting from tree expansion in', as.character(params$current_year))] <- paste(as.character(-round(main_df_rec$yieldgap,0)), 'tons')
-stat_df[, paste('Herbaceous production gains/losses resulting from tree expansion since 1990')] <- paste(as.character(-round(sum(params$main_df$yieldgap),0)), 'tons') 
-stat_df <- stat_df[,2:7]
-
-stat_df <- stat_df %>%
-  t() %>%
-  melt() %>%
-  mutate(Figure = figure_v[row_number()],
-         Value = prettyNum(value, big.mark = ",")) %>%
-  select(c(Variable = Var1, Value, Figure))
-
-kable(stat_df, col.names = NULL) %>%
-  column_spec(1, width = "15cm") %>%
-  column_spec(2, width = "5cm") %>%
-  column_spec(3, width = "5cm") %>%
-  row_spec(1:6, hline_after = TRUE) %>%
-  kable_styling()
-```
-
-<div style="margin-bottom:15px;">
+<div style="margin-bottom:50px;">
 </div>
 
-|
-|
-## Tree cover and herbaceous production plots for `r params$new_title`
-#### Tree cover and herbaceous production
-```{r echo = FALSE, fig.width=10}
-# Annual production plot
-prod_plot <- ggplot()+
-  geom_line(params$main_df, mapping = aes(x = year, y = biomass), color = 'grey20', size = 1)+
-  geom_point(params$main_df, mapping = aes(x = year, y = biomass), color = 'grey20', size = 2)+
-  labs(title = 'Figure 1: Herbaceous production', y = 'Annual production (tons)')+
-  scale_y_continuous(labels = comma, limits = c(0, (max(params$main_df$biomass))*1.1))+
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  theme_minimal()+
-  theme(axis.title.x=element_blank(),
-        plot.title.position = "plot")
+## Rangeland vulnerability   `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")`
+The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`, as shown in the "*Rangeland vulnerability*" map above.
+```{r echo = FALSE, warning = FALSE, fig.width=10}
+bs_modal(id = "modalVulnerability", 
+         title = "Rangeland vulnerability classes", 
+         body = includeMarkdown(path = "C:/Users/eric/Desktop/CountyForage/Scripts/Modal_Vulnerability.md"))
 
-# Tree cover area
-tree_plot <- ggplot()+
-  geom_line(params$main_df, mapping = aes(x = year, y = treeArea), color = '#0E8E00', size = 1)+
-  geom_point(params$main_df, mapping = aes(x = year, y = treeArea), color = '#0E8E00', size = 2)+
-  geom_hline(yintercept = head(params$main_df$treeArea, n=1), linetype = 'dashed', color = 'grey30', size = 1)+
-  labs(title = 'Figure 2: Tree cover', y = 'Tree cover (acres)')+
-  scale_y_continuous(labels = comma, limits = c(0, max(params$main_df$treeArea)*1.1))+
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  theme_minimal()+
-  #lims(y = c(0,max(params$main_df$treeArea)*1.1))+
-  theme(axis.title.x=element_blank(),
-        plot.title.position = "plot")
+plot_df <- params$main_df %>%
+  dplyr::select(c(year, `At-risk` = classAtRisk, Intact = classIntact)) %>%
+  melt(id = 'year')
 
-(prod_plot | tree_plot)
+ggplot()+
+  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), colour="grey30", size = 0.75, width = 1, position = position_dodge(width = 1), stat = "identity")+
+  labs(y = 'Area (acres)', title = '')+
+  scale_fill_manual(
+        values = c(
+          `At-risk` = "#FDE64B",
+          Intact = "#00B050"))+
+  scale_y_continuous(labels = comma)+
+  theme_minimal()+
+  theme(legend.title = element_blank(),
+        legend.position="bottom",
+        axis.title.x=element_blank(),
+        plot.title.position = "plot")
 ```
 
 <div style="margin-bottom:50px;">
 </div>
 
-#### Herbaceous production gains/losses resulting from tree cover change
+## Herbaceous production gains/losses 
+The plots below depict herbaceous production gains/losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(params$current_year)`. The annual plot displays the same information as the "*Production loss in 2019*" map above.
 ```{r echo = FALSE, fig.width=10}
 annYG_plot <- ggplot()+
   geom_line(params$main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 1)+
   geom_point(params$main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 2)+
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey30', size = 1)+
-  labs(title = 'Figure 3: Annual herbaceous production gains/losses\nresulting from tree cover change', y = 'Production gains/losses (tons)')+
+  labs(title = 'Annual herbaceous production gains/losses', y = 'Production gains/losses (tons)')+
   coord_cartesian(ylim = c(-(max(abs(params$main_df$yieldgap)))*1.1,(max(abs(params$main_df$yieldgap)))*1.1))+
   scale_y_continuous(labels = comma)+
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
@@ -244,7 +365,7 @@ cumYG_plot <- ggplot()+
   geom_line(params$main_df, mapping = aes(x = year, y = -cumYieldGap), color = 'red', size = 1)+
   geom_point(params$main_df, mapping = aes(x = year, y = -cumYieldGap), color = 'red', size = 2)+
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey30', size = 1)+
-  labs(title = 'Figure 4: Cumulative herbaceous production gains/losses\nresulting from tree cover change', y = 'Production gains/losses (tons)')+
+  labs(title = 'Cumulative herbaceous production gains/losses', y = 'Production gains/losses (tons)')+
   coord_cartesian(ylim = c((-max(abs(params$main_df$cumYieldGap)))*1.1,(max(abs(params$main_df$cumYieldGap)))*1.1))+
   scale_y_continuous(labels = comma)+
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
@@ -255,28 +376,138 @@ cumYG_plot <- ggplot()+
 (annYG_plot | cumYG_plot)
 ```
 
-<div style="margin-bottom:50px;">
-</div>
+  
+|
+|
+## Summary statistics
+### `r params$type` summary `r bs_button("?") %>% bs_attach_modal(id_modal = "modalAnalysisArea")`
+```{r echo = FALSE, warning = FALSE}
+bs_modal(id = "modalAnalysisArea", 
+         title = "Analysis Area", 
+         body = includeMarkdown(path = "C:/Users/eric/Desktop/CountyForage/Scripts/Modal_AnalysisArea.md"))
 
-```{r echo = FALSE, warning = FALSE, fig.width=10}
-plot_df <- params$main_df %>%
-  select(c(year, `At-risk` = classAtRisk, Intact = classIntact)) %>%
-  melt(id = 'year')
+char_df <- tibble(init = 10)
+char_df[, 'Total area'] <- paste(as.character(round(params$main_df$totalArea[1]), 0), 'acres')
+char_df[, 'Analysis area'] <- paste(as.character(round(params$main_df$analysisArea[1]), 0), 'acres')
+char_df[, 'Area excluded from analysis'] <- paste(as.character(round(params$main_df$totalArea[1] - params$main_df$analysisArea[1]), 0), 'acres')
+char_df <- char_df[,2:4]
 
-ggplot()+
-  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), position = position_dodge(width = 0.9), stat = "identity")+
-  labs(y = 'Cover (acres)', title = 'Figure 5a: Intact and at-risk area')+
-  scale_fill_manual(
-        values = c(
-          `At-risk` = "#FDE64B",
-          Intact = "#4F963C"))+
-  scale_y_continuous(labels = comma)+
-  theme_minimal()+
-  theme(legend.title = element_blank(),
-        legend.position="bottom",
-        axis.title.x=element_blank(),
-        plot.title.position = "plot")
+char_df <- char_df %>%
+  t() %>%
+  melt() %>%
+  mutate(Value = prettyNum(value, big.mark = ","),
+         Blank = c('','','')) %>%
+  dplyr::select(c(Variable = Var1, Value,Blank))
+
+kable(char_df, col.names = NULL, booktabs = FALSE) %>%
+  column_spec(1, width = "15cm") %>%
+  column_spec(2, width = "5cm") %>%
+  column_spec(3, width = "5cm") %>%
+  row_spec(1:3, hline_after = TRUE) %>%
+  kable_styling()
+
+
 ```
+
+
+### Herbaceous production and tree cover summary 
+```{r echo = FALSE, warning = FALSE}
+# Statistics for report
+figure_v <- c("[Supplemental figure](#supplemental-data)",
+              "[See figure](#herbaceous-production-gainslosses)", 
+              "[See figure](#herbaceous-production-gainslosses)",
+              "[Supplemental figure](#supplemental-data)", 
+              "[Supplemental figure](#supplemental-data)", 
+              "", 
+              "")
+main_df_rec <- params$main_df %>%
+  filter(year == params$current_year) 
+
+stat_df <- tibble(init = 10)
+stat_df[, paste('Herbaceous production in', as.character(params$current_year))] = paste(as.character(round(main_df_rec$biomass,0)), 'tons')
+prodChangeCum <- -round(main_df_rec$yieldgap,0)
+stat_df[, paste('Herbaceous production gains/losses in', as.character(params$current_year))] <- ifelse(prodChangeCum >= 0, paste('+', as.character(prodChangeCum), ' tons', sep = ''), paste('-', as.character(prodChangeCum), ' tons', sep = ''))
+prodChangeCur <- -round(sum(params$main_df$yieldgap),0)
+stat_df[, paste('Herbaceous production gains/losses since 1990')] <- ifelse(prodChangeCur >= 0, paste('+', as.character(prodChangeCur), ' tons', sep = ''), paste('-', as.character(prodChangeCur), ' tons', sep = '')) 
+stat_df[, paste('Tree cover in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeArea,0)), 'acres')
+treeAreaChange <- round((tail(params$main_df$treeArea, n = 1)) - (head(params$main_df$treeArea, n = 1)), 0)
+stat_df[, paste('Tree cover change since 1990')] <- ifelse(treeAreaChange >= 0, paste('+', as.character(treeAreaChange), ' acres', sep = ''), paste('-', as.character(treeAreaChange), ' acres', sep = ''))
+stat_df[, paste('Tree cover percent in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeCover,2)),'%', sep = '')
+treePctChange <- round((tail(params$main_df$treeCover, n = 1)) - (head(params$main_df$treeCover, n = 1)), 2)
+stat_df[, paste('Tree cover percent change since 1990')] <- ifelse(treePctChange >= 0, paste('+', as.character(treePctChange), '%', sep = ''), paste('-', as.character(treePctChange), '%', sep = ''))
+
+stat_df <- stat_df[,2:8]
+
+stat_df <- stat_df %>%
+  t() %>%
+  melt() %>%
+  mutate(Figure = figure_v[row_number()],
+         Value = prettyNum(value, big.mark = ",")) %>%
+  dplyr::select(c(Variable = Var1, Value, Figure))
+
+kable(stat_df, col.names = NULL) %>%
+  column_spec(1, width = "15cm") %>%
+  column_spec(2, width = "5cm") %>%
+  column_spec(3, width = "5cm") %>%
+  row_spec(1:6, hline_after = TRUE) %>%
+  kable_styling()
+```
+
+|
+## Supplemental data
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingOne">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+          Annual data table
+        </a>
+      </h4>
+    </div>
+    <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+      <div class="panel-body">
+      <object type="text/html" data=', 
+      paste('"C:/Users/eric/Desktop/CountyForage/', params$main_dir, 'data.html"', sep = ''),
+      ' width = 800 height = 975></object>
+      <br>
+      <p><a href = "data.csv">Download data table as CSV</a></p>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingTwo">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+          Herbaceous production plot
+        </a>
+      </h4>
+    </div>
+    <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+      <div class="panel-body">',
+      paste('<img src="C:/Users/eric/Desktop/CountyForage/', params$main_dir, 'production.png"', sep = ''),
+      '</div>
+    </div>
+  </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingThree">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+          Tree cover plot
+        </a>
+      </h4>
+    </div>
+    <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+      <div class="panel-body">',
+      paste('<img src="C:/Users/eric/Desktop/CountyForage/', params$main_dir, 'tree.png"', sep = ''),
+      '</div>
+    </div>
+  </div>
+</div>
+', sep = ''))
+```
+
 
 <div style="margin-bottom:35px;">
 </div>
@@ -286,7 +517,7 @@ Access the complete data that from which this report is derived:
 
 * [View tree cover data in the Rangeland Analysis Platform web application](`r params$rap_url`){target="_blank"}
 * [Download this report as a PDF.](./index.pdf)
-* [Download the CSV for this report.](`r ifelse(params$type == 'County', './County.csv', './State.csv')`)  
+* [Download the CSV for this report.](`r ifelse(params$type == 'County', './County.csv', './state.csv')`)  
 
   
 *Report generated on `r Sys.Date()`.*
