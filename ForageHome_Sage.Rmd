@@ -1,5 +1,5 @@
 ---
-title: "Tree cover change and rangeland production reports"
+title: "Sagebrush Biome Tree Cover Change and Rangeland Productivity Reports"
 output: html_document
 ---
 
@@ -21,13 +21,13 @@ library(htmlwidgets)
 library(htmltools)
 library(bsplus)
 library(tufte)
+library(leafem)
 ```
 
 
-> *"Woodland expansion takes rangeland out of agricultural production and displaces rangeland wildlife. Scattered trees in grassland ecosystems may look harmless to a casual observer, but the expansion of woody plants erodes resilience and increases
-risk to wildlife and producers."*
+> *"Woodland expansion into grasslands and shrublands is a global problem as trees displace rangeland wildlife and reduce productivity of grazing lands. Scattered young trees in sagebrush country may look harmless to a casual observer, but science shows conifer expansion can erode rangeland resilience if left unchecked."*
 >
-> `r tufte::quote_footer('--- Great Plains Framework for Conservation Action')`
+> `r tufte::quote_footer('--- Sagebrush Biome Framework for Conservation Action')`
 
 The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production. Here, these data are available as state and county summaries as web and pdf formats.  Understanding where tree encroachment drives production losses provides a means to focus private-land conservation where biodiversity intersects with economic sustainability.  
 
@@ -36,15 +36,29 @@ Click on a state below to access these reports.
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 
 # --------- Dataframe for mapping -------------
-stas_sf <- st_read('../data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% 
+stas_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% 
   st_transform(4326) %>%
-  filter(STUSPS %in% c('AZ', 'CA', 'CO', 'ID', 'KS', 'MT', 'NE', 'NV', 'NM', 'ND', 'OK', 'OR', 'SD', 'TX', 'UT', 'WA', 'WY')) %>% 
+  # filter(STUSPS %in% c('AZ', 'CA', 'CO', 'ID', 'KS', 'MT', 'NE', 'NV', 'NM', 'ND', 'OK', 'OR', 'SD', 'TX', 'UT', 'WA', 'WY')) %>% 
   select(c(NAME)) %>%
-  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/index.html', sep = ''))
+  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/index.html', sep = ''))%>%
+  st_simplify(dTolerance = 0.02)
+
+biome_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/sagebrushBoundary/sagebrushBoundary.shp', quiet = TRUE) %>% 
+  st_transform(4326) %>%
+  st_simplify(dTolerance = 0.02)
+
+rap_states <- (c('Washington', 'Oregon', 'California', 'Idaho', 'Nevada', 'Utah', 'Montana', 'Wyoming', 'Colorado', 'Arizona', 'New Mexico', 'Texas', 'Oklahoma', 'Kansas', 'Nebraska', 'South Dakota', 'North Dakota'))
+
+biome_stas_sf <- stas_sf %>%
+  st_filter(biome_sf, .pred = st_intersects) %>%
+  filter(NAME %in% rap_states)
+
+biome_stas_cent_sf <- biome_stas_sf %>%
+  st_centroid()
 
 # --------- On-click functionality -------------
 
-sta_paths <- stas_sf$path
+sta_paths <- biome_stas_sf$path
 
 # Concatenate the Javascript string by looping over each county feature in the state
 jsOnClick_srt <- paste('
@@ -64,32 +78,74 @@ jsOnClick_end <- '}'
 jsOnClick <- paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
 
 # --------- Interactive map -------------
-leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5, dragging = FALSE, attributionControl=FALSE)) %>%
-    addPolygons(data = stas_sf, 
-                fillColor = "#00000000", 
-                color = '#E9E9E9', 
-                opacity = 1, 
-                weight = 1,
-                label = ~NAME, 
-                # popup = paste(stas_sf$NAME, "<BR>", "<a href =   '", stas_sf$path, "' target = '_self'>", 'See the report </a>'),
-                labelOptions = labelOptions(style = list(
-                                              "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                                              "font-size" = "16px"))) %>%
-    setMapWidgetStyle(list(background= "white"))  %>%
-    htmlwidgets::onRender(jsOnClick) %>%
-    addProviderTiles(providers$GeoportailFrance.orthos) %>%
-    htmlwidgets::onRender("(function(){
-    var originalInitTile = L.GridLayer.prototype._initTile
-    L.GridLayer.include({
-        _initTile: function (tile) {
-            originalInitTile.call(this, tile);
+# Function for legend
+make_shapes <- function(colors, sizes, borders, shapes) {
+  shapes <- gsub("circle", "50%", shapes)
+  shapes <- gsub("square", "0%", shapes)
+  paste0(colors, "; width:", sizes, "px; height:", sizes, "px; border:3px solid ", borders, "; border-radius:", shapes)
+}
 
-            var tileSize = this.getTileSize();
-
-            tile.style.width = tileSize.x + 1 + 'px';
-            tile.style.height = tileSize.y + 1 + 'px';
-        }
-    });
+leaflet(options = leafletOptions(zoomControl = FALSE, zoomSnap=0.01, zoomDelta = 0.25, minZoom = 5.25, maxZoom = 5.25, dragging = FALSE, attributionControl=FALSE)) %>%
+  addMapPane("biome_states_func", zIndex = 450) %>% # shown top
+  addMapPane("states", zIndex = 410) %>% # shown bottom
+  addMapPane("biome_states", zIndex = 420) %>% # shown second from bottom
+  addMapPane("biome", zIndex = 430) %>% # shown middle
+  addMapPane('biome_states_labels', zIndex = 440) %>%# shown second from top
+  addPolygons(data = biome_stas_sf, 
+              fillColor = "#00000000", 
+              color = "#00000000", 
+              opacity = 0, 
+              weight = 0,
+              label = paste('Click to see report for', biome_stas_sf$NAME), 
+              options = pathOptions(pane = "biome_states_func"),
+              labelOptions = labelOptions(style = list(
+                                            "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                                            "font-size" = "16px"))) %>%
+  addPolygons(data = biome_stas_sf, 
+              fillColor = "#00000000", 
+              color = "#404040",
+              opacity = 1,
+              weight = 3,
+              options = pathOptions(pane = "biome_states")) %>%
+  addPolygons(data = stas_sf,
+              fillColor = "#00000000",
+              color = '#404040',
+              opacity = .6,
+              weight = 1,
+              options = pathOptions(pane = "states")) %>%
+  addPolygons(data = biome_sf,
+              fillColor = "#328C1D", 
+              opacity = .3,
+              weight = 0,
+              options = pathOptions(pane = "biome")) %>%
+  addLabelOnlyMarkers(data = biome_stas_cent_sf,
+                      label = as.character(biome_stas_cent_sf$NAME),
+                      options = pathOptions(pane = "biome_states_labels"),
+                      labelOptions = leaflet::labelOptions(noHide = TRUE,
+                                                           direction = "top",
+                                                           textOnly = TRUE,
+                                                           offset = c(0, 20),
+                                                           textsize = '16px',
+                                                           opacity = 1,
+                                                           style = list(
+                                                           "text-shadow" = "1px 1px #BEBEBE",
+                                                           "font-weight" =  "bold",
+                                                           "font-family" = "Open sans"))) %>%
+  addLegend('bottomleft', color = make_shapes('#328C1D', 15, '#328C1D', 'empty_square'), labels = 'Sagebrush Biome') %>%
+  setMapWidgetStyle(list(background= "white"))  %>%
+  htmlwidgets::onRender(jsOnClick) %>%
+  addProviderTiles(providers$Esri.WorldTerrain) %>%
+  setView(lng = -111, lat = 41, zoom = 5.5) %>%
+  htmlwidgets::onRender("(function(){
+  var originalInitTile = L.GridLayer.prototype._initTile
+  L.GridLayer.include({
+      _initTile: function (tile) {
+          originalInitTile.call(this, tile);
+          var tileSize = this.getTileSize();
+          tile.style.width = tileSize.x + 1 + 'px';
+          tile.style.height = tileSize.y + 1 + 'px';
+      }
+  });
 })()")
 ```
 
@@ -117,7 +173,7 @@ htmltools::HTML(paste('
           The rangeland vulnerability maps and time-series plots in these reports leverage the approach, depicted below, for mapping various stages of encroachment to better target management and reduce future vulnerability.
           <br>
           <br>
-          <center><img src="C:/Users/eric/Desktop/CountyForage/Assets/WLFW_Vulnerability.png" width="600"></center>
+          <center><img src="./_assets/WLFW_Vulnerability.png" width="600"></center>
           <br>
           <br>
           This approach is adapted in the reports to map the following classes, defined as such: 
@@ -147,7 +203,7 @@ htmltools::HTML(paste('
          <br>
          <br>
          Here, estimates of production gains and losses are directly related to tree cover change based on a 1990 baseline and are not the result of climatic or land use factors for which the analysis accounts for. In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 and observed production estimated using a satellite-derived dataset. This relationship is depicted in the plot below.
-         <center><img src="C:/Users/eric/Desktop/CountyForage/Assets/YieldGap.png" width="600"></center>        
+         <center><img src="./_assets/YieldGap.png" width="600"></center>        
       </div>
     </div>
   </div>
@@ -164,7 +220,7 @@ htmltools::HTML(paste('
       Rangelands added more than 19,000,000 acres of trees between 1990-2019, which is similar in magnitude to the conversion of rangelands to row crop agriculture.
         <br>
         <br>
-        <center><img src="C:/Users/eric/Desktop/CountyForage/Assets/TreeChange.png" width="600"></center>
+        <center><img src="./_assets/TreeChange.png" width="600"></center>
         <br>
         <br>
         These reports evaluate tree cover change in terms of percent cover and total acreage and subsequent herbaceous productivity gains/losses (see above). In all cases, the reports present tree cover percent change as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of that in 1990.
@@ -181,15 +237,12 @@ htmltools::HTML(paste('
     </div>
     <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
       <div class="panel-body">
-        These reports estimate herbaceous production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis.
-        <br>
-        <br>
-        The values in this table are:
+        These reports estimate herbaceous production changes for less intensively modified areas across the western US and, thus, exclude some land cover types from analysis.
         <br>
         <ul>
-        <li>Total area: The total area of the state or county covered by the report.</li>
-        <li>Analysis area: The land area used generate this report. This includes all land cover types (ex. shrublands, grasslands, forest, etc.) other than row crop agriculture and developed landscapes, which are excluded from the analysis using the National Land Cover Database (2016) (NLCD) and National Agricultural Statistics Service (NASS) Cropland Data Layers.</li>
-        <li>Area excluded from analysis: The land area removed from this analysis. Specifically, this is the total area classified as agricultural or developed by the NLCD and NASS datasets.</li>
+        <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
+        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers.</li>
+        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
         </ul>
       </div>
     </div>
@@ -201,6 +254,7 @@ htmltools::HTML(paste('
 
 
 ## Reference:
+* [See the reports for the Great Plains Biome](../greatplains/index.html)  
 * [View tree cover data in the Rangeland Analysis Platform web application.](https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree){target="_blank"}  
 * [Read the pre-print manuscript that supports these reports.](https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract){target="_blank"}  
 * [Learn more about the WLFW strategy on Woodland Expansion in the sagebrush biome.](https://wlfw.rangelands.app/sagebrush/woodland-expansion/){target="_blank"}

@@ -1,0 +1,262 @@
+---
+title: "Great Plains Grasslands Tree Cover Change and Rangeland Productivity Reports"
+output: html_document
+---
+
+<style type="text/css">
+
+body{ /* Normal  */
+      font-family: Open Sans; 
+  }
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=9, fig.height=7.5) 
+library(tidyverse)
+library(sf)
+library(knitr)
+library(leaflet)
+library(leaflet.extras)
+library(htmlwidgets)
+library(htmltools)
+library(bsplus)
+library(tufte)
+library(leafem)
+```
+
+
+> *"Woodland expansion takes rangeland out of agricultural production and displaces rangeland wildlife. Scattered trees in grassland ecosystems may look harmless to a casual observer, but the expansion of woody plants erodes resilience and increases
+risk to wildlife and producers."*
+>
+> `r tufte::quote_footer('--- Great Plains Framework for Conservation Action')`
+
+The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production. Here, these data are available as state and county summaries as web and pdf formats.  Understanding where tree encroachment drives production losses provides a means to focus private-land conservation where biodiversity intersects with economic sustainability.  
+
+Click on a state below to access these reports.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+
+# --------- Dataframe for mapping -------------
+stas_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% 
+  st_transform(4326) %>%
+  # filter(STUSPS %in% c('AZ', 'CA', 'CO', 'ID', 'KS', 'MT', 'NE', 'NV', 'NM', 'ND', 'OK', 'OR', 'SD', 'TX', 'UT', 'WA', 'WY')) %>% 
+  select(c(NAME)) %>%
+  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/index.html', sep = ''))%>%
+  st_simplify(dTolerance = 0.02)
+
+biome_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/greatPlainsBoundary/greatPlainsBoundary.shp', quiet = TRUE) %>% 
+  st_transform(4326) %>%
+  st_simplify(dTolerance = 0.02)
+
+rap_states <- (c('Washington', 'Oregon', 'California', 'Idaho', 'Nevada', 'Utah', 'Montana', 'Wyoming', 'Colorado', 'Arizona', 'New Mexico', 'Texas', 'Oklahoma', 'Kansas', 'Nebraska', 'South Dakota', 'North Dakota'))
+
+biome_stas_sf <- stas_sf %>%
+  st_filter(biome_sf, .pred = st_intersects) %>%
+  filter(NAME %in% rap_states)
+
+biome_stas_cent_sf <- biome_stas_sf %>%
+  st_centroid()
+
+# --------- On-click functionality -------------
+
+sta_paths <- biome_stas_sf$path
+
+# Concatenate the Javascript string by looping over each county feature in the state
+jsOnClick_srt <- paste('
+  function(el, x) {
+    var marker = document.getElementsByClassName("leaflet-interactive");')
+
+jsOnClick_mid <- as.character('')
+for(i in 1:length(sta_paths)){
+  url = sta_paths[i]
+  i_js = i -1
+  js_str <- paste('marker[', i_js, '].onclick=function(){window.open(\"', url, '\", \"_self\");};', sep = '')
+  jsOnClick_mid <- paste(jsOnClick_mid, js_str)
+}
+
+jsOnClick_end <- '}'
+
+jsOnClick <- paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
+
+# --------- Interactive map -------------
+# Function for legend
+make_shapes <- function(colors, sizes, borders, shapes) {
+  shapes <- gsub("circle", "50%", shapes)
+  shapes <- gsub("square", "0%", shapes)
+  paste0(colors, "; width:", sizes, "px; height:", sizes, "px; border:3px solid ", borders, "; border-radius:", shapes)
+}
+
+leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5, dragging = FALSE, attributionControl=FALSE)) %>%
+  addMapPane("biome_states_func", zIndex = 450) %>% # shown top
+  addMapPane("states", zIndex = 410) %>% # shown bottom
+  addMapPane("biome_states", zIndex = 420) %>% # shown second from bottom
+  addMapPane("biome", zIndex = 430) %>% # shown middle
+  addMapPane('biome_states_labels', zIndex = 440) %>%# shown second from top
+  addPolygons(data = biome_stas_sf, 
+              fillColor = "#00000000", 
+              color = "#00000000", 
+              opacity = 0, 
+              weight = 0,
+              label = paste('Click to see report for', biome_stas_sf$NAME), 
+              options = pathOptions(pane = "biome_states_func"),
+              labelOptions = labelOptions(style = list(
+                                            "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                                            "font-size" = "16px"))) %>%
+  addPolygons(data = biome_stas_sf, 
+              fillColor = "#00000000", 
+              color = "#404040",
+              opacity = 1,
+              weight = 3,
+              options = pathOptions(pane = "biome_states")) %>%
+  addPolygons(data = stas_sf,
+              fillColor = "#00000000",
+              color = '#404040',
+              opacity = .6,
+              weight = 1,
+              options = pathOptions(pane = "states")) %>%
+  addPolygons(data = biome_sf,
+              color = '#328C1D',
+              opacity = 0,
+              options = pathOptions(pane = "biome")) %>%
+  addLabelOnlyMarkers(data = biome_stas_cent_sf,
+                      label = as.character(biome_stas_cent_sf$NAME),
+                      options = pathOptions(pane = "biome_states_labels"),
+                      labelOptions = leaflet::labelOptions(noHide = TRUE,
+                                                           direction = "top",
+                                                           textOnly = TRUE,
+                                                           offset = c(0, 20),
+                                                           textsize = '16px',
+                                                           opacity = 1,
+                                                           style = list(
+                                                           "text-shadow" = "1px 1px #BEBEBE",
+                                                           "font-weight" =  "bold",
+                                                           "font-family" = "Open sans"))) %>%
+  addLegend('bottomleft', color = make_shapes('#328C1D', 15, '#328C1D', 'empty_square'), labels = 'Great Plains Grassland Biome') %>%
+  setMapWidgetStyle(list(background= "white"))  %>%
+  htmlwidgets::onRender(jsOnClick) %>%
+  addProviderTiles(providers$Esri.WorldTerrain) %>%
+  setView(lng = -104, lat = 38.5, zoom = 4.75) %>%
+  htmlwidgets::onRender("(function(){
+  var originalInitTile = L.GridLayer.prototype._initTile
+  L.GridLayer.include({
+      _initTile: function (tile) {
+          originalInitTile.call(this, tile);
+          var tileSize = this.getTileSize();
+          tile.style.width = tileSize.x + 1 + 'px';
+          tile.style.height = tileSize.y + 1 + 'px';
+      }
+  });
+})()")
+```
+
+## About the reports:
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+htmltools::HTML(paste('
+<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingOne">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+          Rangeland vulnerability
+        </a>
+      </h4>
+    </div>
+    <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+      <div class="panel-body">
+          Woody encroachment has emerged as a global threat to grassland biomes and the people, plants and animals that depend on them. As a result of increasing exposure to woody seed sources, many rangelands have become increasingly vulnerable to woodland encroachment. With the advent of satellite-derived measures of tree cover and rangeland productivity, rangeland management is poised to adapt to a more proactive management strategy for woody encroachment that confronts underlying risks and weaknesses before problems arise. 
+          <br>
+          <br>
+          These reports support an integrated framework for reducing grassland vulnerability to woody plant encroachment, as outlined in <i>A Guide to Reducing Risk and Vulnerability to Woody Enroachment and Rangelands.</i>
+          <br>
+          <br>
+          The rangeland vulnerability maps and time-series plots in these reports leverage the approach, depicted below, for mapping various stages of encroachment to better target management and reduce future vulnerability.
+          <br>
+          <br>
+          <center><img src="./_assets/WLFW_Vulnerability.png" width="600"></center>
+          <br>
+          <br>
+          This approach is adapted in the reports to map the following classes, defined as such: 
+          <ul>
+          <li> <b>Forest/Woodland:</b> Areas with greater than 20% tree cover. NOTE: These areas include primary forest, as well as woodlands and encroached rangelands.  </li>
+          <li> <b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.  </li>
+          <li> <b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but within a dispersal range of 200 meters of any area with greater than 3% tree cover.  </li>
+          <li> <b>Intact rangeland:</b> Areas with less than 3% tree cover and outside of a dispersal range of 200 meters of any area with greater than 3% tree cover.  </li>
+          </ul>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingTwo">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+          Herbaceous production gains/losses
+        </a>
+      </h4>
+    </div>
+    <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+      <div class="panel-body">
+         Tree cover is a key regulator of herbaceous production (the combined production of grasses and forbs; i.e., forage) upon which both wildlife and livestock depend and tree cover increases are resulting in declining rangeland productivity in many locations. For context, the 2019 production loss of 22 million tons across the American west is enough forage to sustain 1.5 million bison or 1.9 million cattle.
+         <br>
+         <br>
+         The production loss statistics and figures presented in these reports are derived from the analysis in <i><a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation potential and sustainability of U.S. rangelands.</i></a>
+         <br>
+         <br>
+         Here, estimates of production gains and losses are directly related to tree cover change based on a 1990 baseline and are not the result of climatic or land use factors for which the analysis accounts for. In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 and observed production estimated using a satellite-derived dataset. This relationship is depicted in the plot below.
+         <center><img src="./_assets/YieldGap.png" width="600"></center>        
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingThree">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+        Tree cover change
+        </a>
+      </h4>
+    </div>
+    <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+      <div class="panel-body">
+      Rangelands added more than 19,000,000 acres of trees between 1990-2019, which is similar in magnitude to the conversion of rangelands to row crop agriculture.
+        <br>
+        <br>
+        <center><img src="./_assets/TreeChange.png" width="600"></center>
+        <br>
+        <br>
+        These reports evaluate tree cover change in terms of percent cover and total acreage and subsequent herbaceous productivity gains/losses (see above). In all cases, the reports present tree cover percent change as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of that in 1990.
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingFour">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+          Analysis area
+        </a>
+      </h4>
+    </div>
+    <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
+      <div class="panel-body">
+        These reports estimate herbaceous production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis.
+        <br>
+        <ul>
+        <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
+        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers.</li>
+        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+', sep = ''))
+```
+
+
+
+## Reference:
+* [See the reports for the Sagebrush Biome](../sagebrush/index.html)  
+* [View tree cover data in the Rangeland Analysis Platform web application.](https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree){target="_blank"}  
+* [Read the pre-print manuscript that supports these reports.](https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract){target="_blank"}  
+* [Learn more about the WLFW strategy on Woodland Expansion in the sagebrush biome.](https://wlfw.rangelands.app/sagebrush/woodland-expansion/){target="_blank"}
+* [Learn more about the WLFW strategy on Woodland Expansion in the Great Plains grassland biome.](https://wlfw.rangelands.app/great-plains/woodland-expansion/){target="_blank"}
+

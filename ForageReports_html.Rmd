@@ -322,7 +322,22 @@ The plot below depicts annual trends in intact and at-risk rangeland classes for
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
 bs_modal(id = "modalVulnerability", 
          title = "Rangeland vulnerability classes", 
-         body = includeMarkdown(path = "C:/Users/eric/Desktop/CountyForage/Scripts/Modal_Vulnerability.md"))
+         body = htmltools::HTML(paste("
+         <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
+         <br>
+         <p>The classes are described below:</p>
+         <p align='center'>
+         <img src=", 
+         ifelse(params$type == 'State', "'../_assets/Vulnerability.png'", "'../../_assets/Vulnerability.png'"), 
+         "width='300'> 
+         </p>
+         <ul>
+         <li><b>Intact rangeland:</b> Areas with less than 3% tree cover and *outside of* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
+         <li><b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but *within* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
+         <li><b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.</li>
+         <li><b>Forest/Woodland:</b> Areas with greater than 20% tree cover. These areas include primary forest, as well as woodlands and invaded rangelands.</li>
+         <br>
+         <p>These vulnerability classes are based on the schmatic outlined in the Working Lands for Wildlife's Great Plains Framework for Conservation Action. <a href = 'https://wlfw.rangelands.app/assets/greatPlainsFramework.pdf#page=15' target='_blank'> Learn more here.</a></p>", sep = '')))
 
 plot_df <- params$main_df %>%
   dplyr::select(c(year, `At-risk` = classAtRisk, Intact = classIntact)) %>%
@@ -384,7 +399,14 @@ cumYG_plot <- ggplot()+
 ```{r echo = FALSE, warning = FALSE}
 bs_modal(id = "modalAnalysisArea", 
          title = "Analysis Area", 
-         body = includeMarkdown(path = "C:/Users/eric/Desktop/CountyForage/Scripts/Modal_AnalysisArea.md"))
+         body = htmltools::HTML(
+        '<p>These reports estimate herbaceous production changes for less intensively modified areas across the western US and, thus, exclude some land cover types from analysis.</p>
+        <p>The values in this table are:</p>
+        <ul>
+        <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
+        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers</li>
+        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
+        </ul>'   ))
 
 char_df <- tibble(init = 10)
 char_df[, 'Total area'] <- paste(as.character(round(params$main_df$totalArea[1]), 0), 'acres')
@@ -456,7 +478,7 @@ kable(stat_df, col.names = NULL) %>%
 |
 ## Supplemental data
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
-htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+htmltools::HTML('<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingOne">
       <h4 class="panel-title">
@@ -467,9 +489,7 @@ htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" ar
     </div>
     <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
       <div class="panel-body">
-      <object type="text/html" data=', 
-      paste('"C:/Users/eric/Desktop/CountyForage/', params$main_dir, 'data.html"', sep = ''),
-      ' width = 800 height = 975></object>
+      <object type="text/html" data="./data.html" width = 800 height = 975></object>
       <br>
       <p><a href = "data.csv">Download data table as CSV</a></p>
       </div>
@@ -484,11 +504,10 @@ htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" ar
       </h4>
     </div>
     <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
-      <div class="panel-body">',
-      paste('<img src="C:/Users/eric/Desktop/CountyForage/', params$main_dir, 'production.png"', sep = ''),
-      '</div>
+      <div class="panel-body">
+      <img src="./production.png">
+      </div>
     </div>
-  </div>
   </div>
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingThree">
@@ -499,13 +518,12 @@ htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" ar
       </h4>
     </div>
     <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
-      <div class="panel-body">',
-      paste('<img src="C:/Users/eric/Desktop/CountyForage/', params$main_dir, 'tree.png"', sep = ''),
-      '</div>
+      <div class="panel-body">
+      <img src="./tree.png">
+      </div>
     </div>
   </div>
-</div>
-', sep = ''))
+</div>')
 ```
 
 
