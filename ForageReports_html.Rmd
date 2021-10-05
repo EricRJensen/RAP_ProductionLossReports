@@ -48,17 +48,17 @@ knitr::opts_chunk$set(echo = TRUE, root.dir = here())
 ```
 
 ```{r echo = FALSE, warning = FALSE}
-home_path = ifelse(params$type == 'County', '../../index.html', '../index.html')
-state_path = ifelse(params$type == 'County', '../index.html', '')
+home_path = ifelse(params$type == 'County', '../../', '../')
+state_path = ifelse(params$type == 'County', '../', '')
 state_name = ifelse(grepl(",", params$new_title) == TRUE, paste('>', str_split(params$new_title, ',')[[1]][2]), paste('>',params$new_title))
 cty_name = ifelse(params$type == 'County', paste('>', str_split(loc_name, ',')[[1]][1], sep = ' '), '')
 
-home_path = ifelse(params$type == 'County', '../../index.html', '../index.html')
-state_path = ifelse(params$type == 'County', '../index.html', '')
+home_path = ifelse(params$type == 'County', '../../', '../')
+state_path = ifelse(params$type == 'County', '../', '')
 state_name = ifelse(grepl(",", params$new_title) == TRUE, paste('>', str_split(params$new_title, ',')[[1]][2]), paste('>',params$new_title))
 
 state_link = ifelse(params$type == 'County', 
-                    paste('-- [', str_split(params$new_title, ',')[[1]][2], '](../index.html)', ' -- '),
+                    paste('-- [', str_split(params$new_title, ',')[[1]][2], '](../)', ' -- '),
                     paste('--',params$new_title))
 
 cty_name = ifelse(params$type == 'County', str_split(loc_name, ',')[[1]][1], '')
@@ -435,11 +435,11 @@ kable(char_df, col.names = NULL, booktabs = FALSE) %>%
 ### Herbaceous production and tree cover summary 
 ```{r echo = FALSE, warning = FALSE}
 # Statistics for report
-figure_v <- c("[Supplemental figure](#supplemental-data)",
+figure_v <- c("See supplemental data",
               "[See figure](#herbaceous-production-gainslosses)", 
               "[See figure](#herbaceous-production-gainslosses)",
-              "[Supplemental figure](#supplemental-data)", 
-              "[Supplemental figure](#supplemental-data)", 
+              "See supplemental data", 
+              "See supplemental data", 
               "", 
               "")
 main_df_rec <- params$main_df %>%
@@ -535,7 +535,7 @@ Access the complete data that from which this report is derived:
 
 * [View tree cover data in the Rangeland Analysis Platform web application](`r params$rap_url`){target="_blank"}
 * [Download this report as a PDF.](./index.pdf)
-* [Download the CSV for this report.](`r ifelse(params$type == 'County', './County.csv', './state.csv')`)  
+* [Download the CSV for this report.](./data.csv)  
 
   
 *Report generated on `r Sys.Date()`.*

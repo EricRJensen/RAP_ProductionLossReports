@@ -41,7 +41,7 @@ stas_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_state
   st_transform(4326) %>%
   # filter(STUSPS %in% c('AZ', 'CA', 'CO', 'ID', 'KS', 'MT', 'NE', 'NV', 'NM', 'ND', 'OK', 'OR', 'SD', 'TX', 'UT', 'WA', 'WY')) %>% 
   select(c(NAME)) %>%
-  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/index.html', sep = ''))%>%
+  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/', sep = ''))%>%
   st_simplify(dTolerance = 0.02)
 
 biome_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/greatPlainsBoundary/greatPlainsBoundary.shp', quiet = TRUE) %>% 
@@ -173,7 +173,7 @@ htmltools::HTML(paste('
           The rangeland vulnerability maps and time-series plots in these reports leverage the approach, depicted below, for mapping various stages of encroachment to better target management and reduce future vulnerability.
           <br>
           <br>
-          <center><img src="./_assets/WLFW_Vulnerability.png" width="600"></center>
+          <center><img src="./_assets/WLFW_Vulnerability.PNG" width="600"></center>
           <br>
           <br>
           This approach is adapted in the reports to map the following classes, defined as such: 
@@ -254,9 +254,8 @@ htmltools::HTML(paste('
 
 
 ## Reference:
-* [See the reports for the Sagebrush Biome](../sagebrush/index.html)  
+* [See the reports for the Sagebrush Biome](../sagebrush/)  
 * [View tree cover data in the Rangeland Analysis Platform web application.](https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree){target="_blank"}  
 * [Read the pre-print manuscript that supports these reports.](https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract){target="_blank"}  
-* [Learn more about the WLFW strategy on Woodland Expansion in the sagebrush biome.](https://wlfw.rangelands.app/sagebrush/woodland-expansion/){target="_blank"}
 * [Learn more about the WLFW strategy on Woodland Expansion in the Great Plains grassland biome.](https://wlfw.rangelands.app/great-plains/woodland-expansion/){target="_blank"}
 

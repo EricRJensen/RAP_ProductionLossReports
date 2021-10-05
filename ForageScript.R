@@ -96,8 +96,8 @@ for(i in stas_fp_v){ #stas_fp_v
   # Subset county sf object for current state's counties
   sta_ctys_sf <- ctys_sf %>%
     filter(STATEFP == i) %>%
-    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/index.html', sep = ''),
-           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/index.html', sep = '')) %>%
+    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/', sep = ''),
+           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/', sep = '')) %>%
     rename(FIPS = GEOID) %>%
     left_join(ctys_yieldgap_df, by = 'FIPS') %>%
     st_simplify(preserveTopology = FALSE, dTolerance = .02)
