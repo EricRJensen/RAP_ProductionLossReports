@@ -34,7 +34,7 @@ The Working Lands for Wildlife (WLFW) science team maintains a woodland expansio
 
 Click on a state below to access these reports.
 
-```{r echo = FALSE, warning = FALSE, message = FALSE}
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.cap = 'The map depicts rangeland production losses for the year 2019 that resulted from increases in tree cover since 1990. The colors show percent losses relative to production that would have been acheived without increases in tree cover. Counties estimated to have had significant amounts of forest prior to Euro-American settlement are masked in grey to focus attention on historical grasslands and shrublands.', fig.width = 9.5}
 
 # --------- Dataframe for mapping -------------
 options(scipen=999)
@@ -81,7 +81,8 @@ state_fp_v <- ctys_sf$STATEFP %>%
   unlist() 
 stas_sf <- map(state_fp_v, dissolve_sta) %>% 
   bind_rows() %>%
-  left_join(st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% st_drop_geometry(), by = 'STATEFP')
+  left_join(st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% st_drop_geometry(), by = 'STATEFP') %>%
+  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/', sep = ''))
 
 # Loop over countys dataframe to produce vector of FIPS codes strings
 stas_fp_v <- c()
@@ -152,24 +153,26 @@ remove(ctys_yieldgap_df, stas_fp_v, current_year, sta_fp, cty_fp, cty_id, i, cty
 
 # --------- On-click functionality -------------
 
-# sta_paths <- biome_stas_sf$path
-# 
-# # Concatenate the Javascript string by looping over each county feature in the state
-# jsOnClick_srt <- paste('
-#   function(el, x) {
-#     var marker = document.getElementsByClassName("leaflet-interactive");')
-# 
-# jsOnClick_mid <- as.character('')
-# for(i in 1:length(sta_paths)){
-#   url = sta_paths[i]
-#   i_js = i -1
-#   js_str <- paste('marker[', i_js, '].onclick=function(){window.open(\"', url, '\", \"_self\");};', sep = '')
-#   jsOnClick_mid <- paste(jsOnClick_mid, js_str)
-# }
-# 
-# jsOnClick_end <- '}'
-# 
-# jsOnClick <- paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
+sta_paths <- stas_sf$path
+
+# Concatenate the Javascript string by looping over each county feature in the state
+jsOnClick_srt <- paste('
+  function(el, x) {
+    var marker = document.getElementsByClassName("leaflet-interactive");')
+
+jsOnClick_mid <- as.character('')
+for(i in 1:length(sta_paths)){
+  url = sta_paths[i]
+  i_js = i -1
+  js_str <- paste('marker[', i_js, '].onclick=function(){window.open(\"', url, '\", \"_self\");};', sep = '')
+  jsOnClick_mid <- paste(jsOnClick_mid, js_str)
+}
+
+jsOnClick_end <- '}'
+
+jsOnClick <- paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
+
+rm(i, i_js, js_str, jsOnClick_end, jsOnClick_mid, jsOnClick_srt, sta_paths, url)
 
 # --------- Interactive map -------------
 
@@ -193,42 +196,57 @@ labs <- lapply(seq(nrow(stas_sf)), function(i) {
 rm(rampcols, forestThreshold)
 
 # Leaflet map
-leaflet(options = leafletOptions(attributionControl=FALSE)) %>%
-  #County choropleths
+leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5, dragging = FALSE, attributionControl=FALSE)) %>%
+  # Control order of layer rendering
+  addMapPane("labs", zIndex = 490) %>%
+  addMapPane("mask_polys", zIndex = 410) %>% 
+  addMapPane("for_polys", zIndex = 420) %>% 
+  addMapPane("nonFor_polys", zIndex = 430) %>% 
+  # State labels and on-click objects
+  addPolygons(data = stas_sf,
+             fillColor = '#FFFFFFFF',
+             color = '#424242',
+             fillOpacity = 0,
+             opacity = 1,
+             label = lapply(labs, htmltools::HTML),
+             weight = 2,
+             options = pathOptions(pane = "labs"),
+             labelOptions = labelOptions(style = list(
+               "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+               "font-size" = "13px",
+               "margin" = "0px"))) %>%
+  # Forest mask
   addPolygons(data = forest_ctys_sf,
               fillColor = 'grey',
-              fillOpacity = 1,
-              color = '#929292')%>%
+              fillOpacity = 0.85,
+              color = '#929292',
+              options = pathOptions(pane = "mask_polys"))%>%
+  # County choropleths, forested
   addPolygons(data = forest_ctys_sf,
               fillColor = ~pal(yieldgap_2019_norm),
               color = '#929292',
               weight = 1,
               opacity = 1,
-              fillOpacity = .4) %>%
-  #County choropleths
+              fillOpacity = .4,
+              options = pathOptions(pane = "for_polys"),) %>%
+  # County choropleths, non-forested
   addPolygons(data = nonFor_ctys_sf,
               fillColor = ~pal(yieldgap_2019_norm),
               color = '#929292',
               weight = 1,
               opacity = 1,
-              fillOpacity = 1) %>%
-  addPolygons(data = stas_sf,
-              fillColor = '#FFFFFFFF',
-              color = '#424242',
-              fillOpacity = 0,
-              opacity = 1,
-              label = lapply(labs, htmltools::HTML),
-              weight = 2,
-              labelOptions = labelOptions(style = list(
-                "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-                "font-size" = "13px",
-                "margin" = "0px"))) %>%
+              fillOpacity = 0.85,
+              options = pathOptions(pane = "nonFor_polys"),) %>%
   addLegend(
           position = "bottomleft", pal = pal, values = sort(nonFor_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
           title = "Production<br>loss in 2019 (%)",
           opacity = .8,
           na.label = '') %>%
-  setMapWidgetStyle(list(background = "white")) %>%
+  # Basemap
+  addProviderTiles(providers$Esri.WorldTerrain) %>%
+  # On-click JS
+  htmlwidgets::onRender(jsOnClick) %>% 
+  # Clean-up tile gap typical of Leaflet
   htmlwidgets::onRender("(function(){
   var originalInitTile = L.GridLayer.prototype._initTile
   L.GridLayer.include({
