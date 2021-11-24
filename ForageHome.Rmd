@@ -1,5 +1,5 @@
 ---
-title: "Tree Cover Encroachment and Rangeland Productivity Reports"
+title: "Tree Encroachment and Rangeland Productivity Loss Reports"
 output: html_document
 ---
 
@@ -8,6 +8,29 @@ output: html_document
 body{ /* Normal  */
       font-family: Open Sans; 
   }
+  
+.title{
+    display: none;
+}
+
+.container {
+  position: relative;
+  text-align: left;
+  color: black;
+  margin-left: 0px;
+  padding-left: 0px;
+  margin-bottom: 10px;
+}
+
+.header-title {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  font-size: 5rem;
+  font-weight: bold;
+  text-shadow: 0 0 10px #FFFFFF, 0 0 20px #FFFFFF, 0 0 30px #FFFFFF, 0 0 40px #FFFFFF;
+}
+
 </style>
 
 ```{r setup, include=FALSE}
@@ -24,6 +47,14 @@ library(tufte)
 library(leafem)
 ```
 
+```{r echo = FALSE, warning = FALSE}
+htmltools::HTML(paste('<div class="container">
+                          <img src = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/banner_crop.jpg" width = "80%" style = "opacity: 0.7">
+                          <div class="header-title">
+                          Tree Encroachment and Rangeland<br>Productivity Loss Reports
+                          </div>
+                       </div>', sep = ''))
+```
 
 > *"Woodland expansion takes rangeland out of agricultural production and displaces rangeland wildlife. Scattered trees in grassland ecosystems may look harmless to a casual observer, but the expansion of woody plants erodes resilience and increases
 risk to wildlife and producers."*
@@ -41,7 +72,7 @@ options(scipen=999)
 
 # Read-in and filter data
 # Read in production csv and filter for county of interest
-ctys_df <- read_csv('C:/Users/eric/Desktop/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20210730.csv') %>%
+ctys_df <- read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20210730.csv') %>%
   mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),#FIPS code
          biomass = biomass / 2000,
          yieldgap = yieldgap / 2000,
@@ -54,7 +85,7 @@ ctys_df <- read_csv('C:/Users/eric/Desktop/CountyForage/data/csv/Agricultural_St
          analysisArea = analysisArea * 0.000247105,
          treeArea = treeArea * 0.000247105,
          treedArea = treedArea * 0.000247105) %>%
-  left_join(read_csv('C:/Users/eric/Desktop/CountyForage/data/csv/BPS_ForestedArea_Exported_20211029.csv') %>%
+  left_join(read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/BPS_ForestedArea_Exported_20211029.csv') %>%
               mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),
                      BPS_Forest = BPS_Forest * 0.000247105) %>%
               select(-c(STATEFP, COUNTYFP, NAME)), by = "COUNTYID")
@@ -63,7 +94,7 @@ ctys_df <- read_csv('C:/Users/eric/Desktop/CountyForage/data/csv/Agricultural_St
 wkt <- 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
 
 # Read in SF objects for states and counties
-ctys_sf <- st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_county_westwide/tl_2020_us_county.shp', quiet = TRUE) %>%
+ctys_sf <- st_read('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/shp/tl_2020_us_county_westwide/tl_2020_us_county.shp', quiet = TRUE) %>%
   mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = '')) %>% #FIPS code
   st_transform(wkt)
 
@@ -81,8 +112,8 @@ state_fp_v <- ctys_sf$STATEFP %>%
   unlist() 
 stas_sf <- map(state_fp_v, dissolve_sta) %>% 
   bind_rows() %>%
-  left_join(st_read('C:/Users/eric/Desktop/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% st_drop_geometry(), by = 'STATEFP') %>%
-  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/', sep = ''))
+  left_join(st_read('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% st_drop_geometry(), by = 'STATEFP') %>%
+  mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/index.html', sep = ''))
 
 # Loop over countys dataframe to produce vector of FIPS codes strings
 stas_fp_v <- c()
@@ -208,8 +239,8 @@ leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5,
              color = '#424242',
              fillOpacity = 0,
              opacity = 1,
-             label = lapply(labs, htmltools::HTML),
              weight = 2,
+             label = lapply(labs, htmltools::HTML),
              options = pathOptions(pane = "labs"),
              labelOptions = labelOptions(style = list(
                "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
@@ -228,7 +259,7 @@ leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5,
               weight = 1,
               opacity = 1,
               fillOpacity = .4,
-              options = pathOptions(pane = "for_polys"),) %>%
+              options = pathOptions(pane = "for_polys")) %>%
   # County choropleths, non-forested
   addPolygons(data = nonFor_ctys_sf,
               fillColor = ~pal(yieldgap_2019_norm),
@@ -236,7 +267,7 @@ leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5,
               weight = 1,
               opacity = 1,
               fillOpacity = 0.85,
-              options = pathOptions(pane = "nonFor_polys"),) %>%
+              options = pathOptions(pane = "nonFor_polys")) %>%
   addLegend(
           position = "bottomleft", pal = pal, values = sort(nonFor_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
           title = "Production<br>loss in 2019 (%)",

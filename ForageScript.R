@@ -5,6 +5,7 @@ library(here)
 library(stringr)
 library(raster)
 library(DT)
+library(reshape2)
 library(tableHTML)
 
 # ------------------------------- Read in CSV and shapefiles -------------------------------------
@@ -145,7 +146,7 @@ stas_sf <- left_join(stas_sf, stas_df, by = 'STATEFP')
 rm(ctys_yieldgap_df, ctys_df_yg2019, forestThreshold, calc_states)
 
 # ---------------------- Nested loop to generate state and county reports -----------------------------
-for(i in '04'){ #stas_fp_v
+for(i in '31'){ #stas_fp_v
   
   # Subset state sf object for current state
   sta_sf <- filter(stas_sf, STATEFP == i)
@@ -158,21 +159,23 @@ for(i in '04'){ #stas_fp_v
   sta_dir <- paste('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/', str_replace(sta_name, ' ', ''), '/', sep = '')
   dir.create(sta_dir)
   
-  # Get state raster
-  sta_rast <- raster(paste('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/tif/v5/960m/', str_replace_all(sta_name, ' ', '_'), '.tif', sep = ''))
-  sta_rast[1,1] <- 6
+  # # Get state raster
+  # sta_rast <- raster(paste('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/tif/v5/960m/', str_replace_all(sta_name, ' ', '_'), '.tif', sep = ''))
+  # sta_rast[1,1] <- 6
   
   # Subset county sf object for current state's counties that are historically forested
   forest_sta_ctys_sf <- forest_ctys_sf %>%
-    filter(STATEFP == i) %>%
-    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/', sep = ''),
-           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/', sep = '')) 
+    filter(STATEFP == i)
   
   # Subset county sf object for current state's counties that are historically nonforested
   range_sta_ctys_sf <- range_ctys_sf %>%
+    filter(STATEFP == i) 
+  
+  # Subset county sf object for current state's counties for labels and on-click functionality
+  sta_ctys_sf <- ctys_sf %>%
     filter(STATEFP == i) %>%
-    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/', sep = ''),
-           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/', sep = '')) 
+    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/index.html', sep = ''),
+           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/index.html', sep = '')) 
   
   # Generate RAP url for county
   coords <- sta_sf %>% 
@@ -274,9 +277,36 @@ for(i in '04'){ #stas_fp_v
   print(tree_map)
   dev.off()
   
+  # # Rangeland vulnerability map
+  # sta_rast_df <- raster::as.data.frame(sta_rast, xy = TRUE) %>%
+  #   drop_na() %>%
+  #   mutate(
+  #     vuln = case_when(
+  #       Arizona == 0 ~ NA,
+  #       Arizona == 1 ~ "Intact rangeland",
+  #       Arizona == 1 ~ "Intact rangeland, at risk",
+  #       Arizona == 2 ~ "Intact rangeland, at risk",
+  #       Arizona == 4 ~ "Low/moderate tree cover",
+  #       Arizona == 5 ~ "Forest/woodland",
+  #       Arizona == 6 ~ "Forest/woodland"))
+  
+  # ggplot()+
+  #   geom_raster(sta_rast_df, mapping = aes(x = x, y = y, fill = Arizona))+
+  #   labs(x = '', y = '')+
+  #   theme_minimal()+
+  #   theme(axis.title.x=element_blank(),
+  #         axis.text.x=element_blank(),
+  #         axis.ticks.y=element_blank(),
+  #         axis.text.y=element_blank(),
+  #         panel.grid.major = element_blank(), 
+  #         panel.grid.minor = element_blank(),
+  #         panel.background = element_blank())
+  
+  
+  
   # Generate rmarkdown reports
   sta_csv_path = paste(sta_dir, 'data.csv', sep = '')
-  write_csv(sta_df_csv, path = sta_csv_path)
+  write_csv(sta_df_csv, file = sta_csv_path)
   rmarkdown::render("C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Scripts/ForageReports_html.Rmd",
                     output_file = paste(sta_dir, 'index', sep = ''),
                     output_format = html_document(),
@@ -284,7 +314,7 @@ for(i in '04'){ #stas_fp_v
                                   main_df = sta_df,
                                   cty_sf = NULL,
                                   sta_sf = sta_sf,
-                                  sta_rast = sta_rast,
+                                  sta_ctys_sf = sta_ctys_sf,
                                   range_sta_ctys_sf = range_sta_ctys_sf,
                                   forest_sta_ctys_sf = forest_sta_ctys_sf,
                                   current_year = current_year,
@@ -305,8 +335,8 @@ for(i in '04'){ #stas_fp_v
   #                                 rap_url = rap_sta_url,
   #                                 type = 'State'))
 
-      for(j in sta_ctys_v[1:3]){
-        
+      for(j in sta_ctys_v){
+
         # Subset to county sf object and name
         cty_sf <- filter(ctys_sf, FIPS == j) #dataframe with county names
 
@@ -331,7 +361,7 @@ for(i in '04'){ #stas_fp_v
           dplyr::select(c(ctyName = NAME, staName, totalArea, analysisArea, biomass, yieldGap = yieldgap, cumYieldGap, treeCover, treeArea, classWoodlands, classModCover, classLowCover, classAtRisk, classIntact))
 
         # Generate RAP url for county
-        coords <- cty_sf %>% 
+        coords <- cty_sf %>%
           st_transform(crs = 5070) %>%
           st_centroid() %>%
           st_transform(crs = 4326) %>%
@@ -346,36 +376,36 @@ for(i in '04'){ #stas_fp_v
                  `Production gain/loss (%)` = ifelse(yieldgap >= 0, paste(round(-(yieldgap/(yieldgap+biomass))*100, 2)), str_replace_all(paste('+', round(-(yieldgap/(yieldgap+biomass))*100, 2), sep = ''), ' ', '')),
                  `Tree area (acres)` = format(round(treeArea, 0), big.mark=",")) %>%
           dplyr::select(c(Year, `Production (tons)`, `Production gain/loss (tons)`, `Production gain/loss (%)`, `Tree area (acres)`)) %>%
-          tableHTML(widths = c(100,150,150,150,150), rownames = FALSE) %>% 
+          tableHTML(widths = c(100,150,150,150,150), rownames = FALSE) %>%
           add_css_row(css = list(c('background-color', 'text-align', 'height', 'font-family'), c('#f2f2f2', 'center', '30px', 'Open Sans')),
                       rows = odd(1:(nrow(cty_df)+1))) %>%
           add_css_row(css = list(c('background-color', 'text-align', 'height', 'font-family'), c('#FFFFFF', 'center', '30px', 'Open Sans')),
-                      rows = even(1:nrow(cty_df))) 
+                      rows = even(1:nrow(cty_df)))
         write_tableHTML(data_html, paste(cty_dir, 'data.html', sep = ''))
-        
+
         # Write out html summary table to add to report
         char_df <- tibble(init = 10)
         char_df[, 'Total area'] <- paste(as.character(round(cty_df$totalArea[1]), 0), 'acres')
         char_df[, 'Analysis area'] <- paste(as.character(round(cty_df$analysisArea[1]), 0), 'acres')
         char_df[, 'Area excluded from analysis'] <- paste(as.character(round(cty_df$totalArea[1] - cty_df$analysisArea[1]), 0), 'acres')
         char_df <- char_df[,2:4]
-        
+
         char_df <- char_df %>%
           t() %>%
           melt() %>%
           mutate(Value = prettyNum(value, big.mark = ",")) %>%
           dplyr::select(c(` ` = Var1, Area = Value))
-        
+
         char_html <- char_df %>%
-          tableHTML(widths = c(300,200), rownames = FALSE, caption = paste('Analysis area summary for', sta_name)) %>% 
-          add_css_row(css = list(c('background-color', 'text-align', 'height', 'font-family', 'font-size', 'border-color'), c('#FFFFFF', 'center', '30px', 'Open Sans', '0.9rem', '#00000055 #FFFFFF00 #00000055 #FFFFFF00')), rows = 1:4)  %>% 
-          add_css_caption(css = list(c('font-size', 'font-family', 'text-align', 'margin-bottom'), c('1rem', 'Open sans', 'left', '8px'))) 
-        
+          tableHTML(widths = c(300,200), rownames = FALSE, caption = paste('Analysis area summary for', sta_name)) %>%
+          add_css_row(css = list(c('background-color', 'text-align', 'height', 'font-family', 'font-size', 'border-color'), c('#FFFFFF', 'center', '30px', 'Open Sans', '0.9rem', '#00000055 #FFFFFF00 #00000055 #FFFFFF00')), rows = 1:4)  %>%
+          add_css_caption(css = list(c('font-size', 'font-family', 'text-align', 'margin-bottom'), c('1rem', 'Open sans', 'left', '8px')))
+
         write_tableHTML(char_html, paste(cty_dir, 'poly_data.html', sep = ''))
 
         # Write out csv of county data
         write_csv(cty_df_csv, path = paste(cty_dir, 'data.csv', sep = ''))
-        
+
         # Export supplementary maps for download
         # Annual production plot
         png(file = paste(cty_dir, 'production.png', sep = ''), width=6, height=4, units="in", res=300)
@@ -390,7 +420,7 @@ for(i in '04'){ #stas_fp_v
                 plot.title.position = "plot")
         print(prod_map)
         dev.off()
-        
+
         # Tree cover area
         png(file = paste(cty_dir, 'tree.png', sep = ''), width=6, height=4, units="in", res=300)
         tree_map <- ggplot()+
@@ -405,7 +435,7 @@ for(i in '04'){ #stas_fp_v
                 plot.title.position = "plot")
         print(tree_map)
         dev.off()
-        
+
         # Generate rmarkdown reports
         rmarkdown::render("C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Scripts/ForageReports_html.Rmd",
                           output_file = paste(cty_dir, 'index', sep = ''),
@@ -413,8 +443,8 @@ for(i in '04'){ #stas_fp_v
                           params = list(new_title = loc_name,
                                         main_df = cty_df,
                                         cty_sf = cty_sf,
-                                        sta_rast = sta_rast,
                                         sta_sf = sta_sf,
+                                        sta_ctys_sf = sta_ctys_sf,
                                         range_sta_ctys_sf = range_sta_ctys_sf,
                                         forest_sta_ctys_sf = forest_sta_ctys_sf,
                                         current_year = current_year,
