@@ -90,15 +90,15 @@ remove(sta_fp, cty_fp, cty_id, i, ctys_fp_df, stas_zoom_df)
 # Get current year to pass to the rmarkdown script as a parameter 
 current_year = max(ctys_df$year)
 
-# Sum up counties to the state level and calculate yield gap values cumulatively through 2019 and for 2019 itself
+# Sum up counties to the state level and calculate yield gap values cumulatively through current year and for current year itself
 ctys_yieldgap_df <- ctys_df %>%
   dplyr::select(c(COUNTYID, year, yieldgap, analysisArea)) %>%
   group_by(COUNTYID) %>%
   mutate(yieldgap_cumulative = sum(yieldgap)) %>%
   filter(year == current_year) %>%
-  mutate(yieldgap_2019_norm_area = yieldgap / analysisArea) %>%
+  mutate(yieldgap_curYear_norm_area = yieldgap / analysisArea) %>%
   ungroup() %>%
-  dplyr::select(c(FIPS = COUNTYID, analysisArea, yieldgap_2019 = yieldgap, yieldgap_cumulative))
+  dplyr::select(c(FIPS = COUNTYID, analysisArea, yieldgap_curYear = yieldgap, yieldgap_cumulative))
 
 # Join sf to summed dataframe
 ctys_sf <- ctys_sf %>%
@@ -106,17 +106,17 @@ ctys_sf <- ctys_sf %>%
   right_join(ctys_yieldgap_df, by = 'FIPS')
 
 # Generate new columns and translate data for plotting 
-ctys_df_yg2019 <- ctys_df %>% 
-  filter(year == 2019) %>%
+ctys_df_yg_curYear <- ctys_df %>% 
+  filter(year == current_year) %>%
   mutate(FIPS = paste(STATEFP,COUNTYFP, sep = ''),
-         yieldgap_2019_norm = yieldgap / (yieldgap + biomass)*100,
+         yieldgap_curYear_norm = yieldgap / (yieldgap + biomass)*100,
          pct_for = BPS_Forest / analysisArea) %>%
-  dplyr::select(c(FIPS, pct_for, yieldgap_2019_norm))
+  dplyr::select(c(FIPS, pct_for, yieldgap_curYear_norm))
 
 # Join sf to normalized dataframe
 ctys_sf <- ctys_sf %>%
-  dplyr::select(c(NAME, FIPS, COUNTYFP, STATEFP, NAMELSAD, yieldgap_2019)) %>%
-  left_join(ctys_df_yg2019, by = 'FIPS') 
+  dplyr::select(c(NAME, FIPS, COUNTYFP, STATEFP, NAMELSAD, yieldgap_curYear)) %>%
+  left_join(ctys_df_yg_curYear, by = 'FIPS') 
 
 # Separate forested from non forested counties using LANDFIRE BPS data
 forestThreshold = 0.4
@@ -134,16 +134,16 @@ calc_states <- function(FIP){
            yieldgap = sum(yieldgap),
            analysisArea = sum(analysisArea)) %>%
     ungroup() %>%
-    filter(year == 2019) %>%
-    mutate(yieldgap_2019_norm = yieldgap / (yieldgap + biomass)*100) %>% 
-    dplyr::select(STATEFP, yieldgap_2019 = yieldgap, yieldgap_2019_norm, biomass) %>%
+    filter(year == current_year) %>%
+    mutate(yieldgap_curYear_norm = yieldgap / (yieldgap + biomass)*100) %>% 
+    dplyr::select(STATEFP, yieldgap_curYear = yieldgap, yieldgap_curYear_norm, biomass) %>%
     unique()  }
 stas_df <- map(stas_fp_v, calc_states) %>% bind_rows()
 
 # Join states yield gap statistics to states SF object
 stas_sf <- left_join(stas_sf, stas_df, by = 'STATEFP')
 
-rm(ctys_yieldgap_df, ctys_df_yg2019, forestThreshold, calc_states)
+rm(ctys_yieldgap_df, ctys_df_yg_curYear, forestThreshold, calc_states)
 
 # ---------------------- Nested loop to generate state and county reports -----------------------------
 for(i in '31'){ #stas_fp_v
@@ -158,10 +158,6 @@ for(i in '31'){ #stas_fp_v
   sta_name <- sta_sf$NAME
   sta_dir <- paste('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/', str_replace(sta_name, ' ', ''), '/', sep = '')
   dir.create(sta_dir)
-  
-  # # Get state raster
-  # sta_rast <- raster(paste('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/tif/v5/960m/', str_replace_all(sta_name, ' ', '_'), '.tif', sep = ''))
-  # sta_rast[1,1] <- 6
   
   # Subset county sf object for current state's counties that are historically forested
   forest_sta_ctys_sf <- forest_ctys_sf %>%
@@ -216,7 +212,7 @@ for(i in '31'){ #stas_fp_v
     mutate(Year = round(year, 0),
            `Production (tons)` = format(round(biomass, 0), big.mark=","),
            `Production gain/loss (tons)` = ifelse(yieldgap >= 0, paste(format(round(-yieldgap, 0), big.mark=",")), str_replace_all(paste('+', format(round(-yieldgap, 0), big.mark=","), sep = ''), ' ', '')),
-           `Production gain/loss (%)` = ifelse(yieldgap >= 0, paste(round(-(yieldgap/(yieldgap+biomass))*100, 2)), str_replace_all(paste('+', round(-(yieldgap/(yieldgap+biomass))*100, 2), sep = ''), ' ', '')),
+           `Production gain/loss (%)` = ifelse(yieldgap >= 0, paste(format(round(-(yieldgap/(yieldgap+biomass))*100, 2), nsmall = 2),'%',sep = ''), str_replace_all(paste('+', format(round(-(yieldgap/(yieldgap+biomass))*100, 2), nsmall = 2),'%',sep = ''), ' ', '')),
            `Tree area (acres)` = format(round(treeArea, 0), big.mark=",")) %>%
     dplyr::select(c(Year, `Production (tons)`, `Production gain/loss (tons)`, `Production gain/loss (%)`, `Tree area (acres)`)) %>%
     tableHTML(widths = c(100,150,150,150, 150), rownames = FALSE) %>% 
@@ -249,24 +245,24 @@ for(i in '31'){ #stas_fp_v
 
   # Export supplementary plots for download
   # Annual production plot
-  png(file = paste(sta_dir, 'production.png', sep = ''), width=6, height=4, units="in", res=300)
-  prod_map <- ggplot()+
-    geom_line(sta_df, mapping = aes(x = year, y = biomass), color = 'grey20', size = 1)+
-    geom_point(sta_df, mapping = aes(x = year, y = biomass), color = 'grey20', size = 2)+
+  png(file = paste(sta_dir, 'production.png', sep = ''), width=9, height=6, units="in", res=200)
+  prod_plot <- ggplot()+
+    geom_line(sta_df, mapping = aes(x = year, y = biomass), color = 'grey20', size = 1.5)+
+    geom_point(sta_df, mapping = aes(x = year, y = biomass), color = 'grey20', size = 3)+
     labs(title = paste('Herbaceous production for', sta_name), y = 'Annual production (tons)')+
     scale_y_continuous(labels = scales::comma, limits = c(0, (max(sta_df$biomass))*1.1))+
     scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
     theme_minimal()+
     theme(axis.title.x=element_blank(),
           plot.title.position = "plot")
-  print(prod_map)
+  print(prod_plot)
   dev.off()
   
-  # Tree cover area
-  png(file = paste(sta_dir, 'tree.png', sep = ''), width=6, height=4, units="in", res=300)
-  tree_map <- ggplot()+
-    geom_line(sta_df, mapping = aes(x = year, y = treeArea), color = '#0E8E00', size = 1)+
-    geom_point(sta_df, mapping = aes(x = year, y = treeArea), color = '#0E8E00', size = 2)+
+  # Tree cover area plot
+  png(file = paste(sta_dir, 'tree.png', sep = ''), width=9, height=6, units="in", res=200)
+  tree_plot <- ggplot()+
+    geom_line(sta_df, mapping = aes(x = year, y = treeArea), color = '#0E8E00', size = 1.5)+
+    geom_point(sta_df, mapping = aes(x = year, y = treeArea), color = '#0E8E00', size = 3)+
     geom_hline(yintercept = head(sta_df$treeArea, n=1), linetype = 'dashed', color = 'grey30', size = 1)+
     labs(title = paste('Tree cover for', sta_name), y = 'Tree cover (acres)')+
     scale_y_continuous(labels = scales::comma, limits = c(0, max(sta_df$treeArea)*1.1))+
@@ -274,42 +270,52 @@ for(i in '31'){ #stas_fp_v
     theme_minimal()+
     theme(axis.title.x=element_blank(),
           plot.title.position = "plot")
-  print(tree_map)
+  print(tree_plot)
   dev.off()
   
-  # # Rangeland vulnerability map
-  # sta_rast_df <- raster::as.data.frame(sta_rast, xy = TRUE) %>%
-  #   drop_na() %>%
-  #   mutate(
-  #     vuln = case_when(
-  #       Arizona == 0 ~ NA,
-  #       Arizona == 1 ~ "Intact rangeland",
-  #       Arizona == 1 ~ "Intact rangeland, at risk",
-  #       Arizona == 2 ~ "Intact rangeland, at risk",
-  #       Arizona == 4 ~ "Low/moderate tree cover",
-  #       Arizona == 5 ~ "Forest/woodland",
-  #       Arizona == 6 ~ "Forest/woodland"))
+  # Rangeland vulnerability map
+  # Load state raster
+  sta_rast <- raster(paste('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/tif/v6/240m_median/', str_replace_all(sta_name, ' ', '_'), '.tif', sep = ''))
+  sta_rast[1,1] <- 6
   
-  # ggplot()+
-  #   geom_raster(sta_rast_df, mapping = aes(x = x, y = y, fill = Arizona))+
-  #   labs(x = '', y = '')+
-  #   theme_minimal()+
-  #   theme(axis.title.x=element_blank(),
-  #         axis.text.x=element_blank(),
-  #         axis.ticks.y=element_blank(),
-  #         axis.text.y=element_blank(),
-  #         panel.grid.major = element_blank(), 
-  #         panel.grid.minor = element_blank(),
-  #         panel.background = element_blank())
-  
-  
+  # Convert raster to dataframe for plotting
+  sta_rast_df <- raster::as.data.frame(sta_rast, xy = TRUE) %>%
+    rename(vuln_val = 3) %>%
+    mutate(vuln = cut(vuln_val, breaks = c(-Inf, 0.99, 1.99, 2.99, 3.99, Inf), 
+                 labels = c(NA, "Intact rangeland", "Intact rangeland, at risk", "Low/moderate tree cover", "Forest/woodland"))) %>%
+    filter(vuln %in% c("Intact rangeland", "Intact rangeland, at risk", "Low/moderate tree cover", "Forest/woodland"))
+
+  # Aspect factor for setting height of exported map
+  aspect_factor <- (max(sta_rast_df$x) - min(sta_rast_df$x)) / (max(sta_rast_df$y) - min(sta_rast_df$y))
+   
+  png(file = paste(sta_dir, 'vuln.png', sep = ''), width=9, height = 9/aspect_factor+2,  units="in", res=150)
+  vuln_map <- ggplot()+
+    geom_raster(sta_rast_df, mapping = aes(x = x, y = y, fill = vuln))+
+    geom_sf(sta_sf, mapping = aes(), color = "#343434", fill = "#FFFFFFFF", alpha = 0, size = 1.5)+
+    geom_sf(sta_ctys_sf, mapping = aes(), color = "#343434", fill = "#FFFFFFFF", alpha = 0, size = 1)+
+    labs(title = paste('Rangeland vulnerability map for', sta_name), x = '', y = '')+
+    scale_fill_manual(values = c("Intact rangeland" = "#00B050",
+                                  "Intact rangeland, at risk"="#FDE64B",
+                                  "Low/moderate tree cover"="#FF0000",
+                                  "Forest/woodland" = "grey40"))+
+    theme_minimal()+
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          legend.title=element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          legend.position="bottom")
+  print(vuln_map)
+  dev.off()
   
   # Generate rmarkdown reports
   sta_csv_path = paste(sta_dir, 'data.csv', sep = '')
   write_csv(sta_df_csv, file = sta_csv_path)
   rmarkdown::render("C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Scripts/ForageReports_html.Rmd",
                     output_file = paste(sta_dir, 'index', sep = ''),
-                    output_format = html_document(),
                     params = list(new_title = sta_name,
                                   main_df = sta_df,
                                   cty_sf = NULL,
@@ -321,6 +327,10 @@ for(i in '31'){ #stas_fp_v
                                   rap_url = rap_sta_url,
                                   main_dir = sta_dir,
                                   type = 'State'))
+  
+  # pagedown::chrome_print(input = paste(sta_dir, 'index.html', sep = ''), 
+  #                        output = paste(sta_dir, 'index_paged.pdf', sep = ''), 
+  #                        format = "pdf")
 
   
   # rmarkdown::render("Scripts/ForageReports_pdf.Rmd",
@@ -335,7 +345,7 @@ for(i in '31'){ #stas_fp_v
   #                                 rap_url = rap_sta_url,
   #                                 type = 'State'))
 
-      for(j in sta_ctys_v){
+      for(j in '31031'){#sta_ctys_v
 
         # Subset to county sf object and name
         cty_sf <- filter(ctys_sf, FIPS == j) #dataframe with county names
@@ -373,7 +383,7 @@ for(i in '31'){ #stas_fp_v
           mutate(Year = round(year, 0),
                  `Production (tons)` = format(round(biomass, 0), big.mark=","),
                  `Production gain/loss (tons)` = ifelse(yieldgap >= 0, paste(format(round(-yieldgap, 0), big.mark=",")), str_replace_all(paste('+', format(round(-yieldgap, 0), big.mark=","), sep = ''), ' ', '')),
-                 `Production gain/loss (%)` = ifelse(yieldgap >= 0, paste(round(-(yieldgap/(yieldgap+biomass))*100, 2)), str_replace_all(paste('+', round(-(yieldgap/(yieldgap+biomass))*100, 2), sep = ''), ' ', '')),
+                 `Production gain/loss (%)` = ifelse(yieldgap >= 0, paste(format(round(-(yieldgap/(yieldgap+biomass))*100, 2), nsmall = 2),'%',sep = ''), str_replace_all(paste('+', format(round(-(yieldgap/(yieldgap+biomass))*100, 2), nsmall = 2),'%',sep = ''), ' ', '')),
                  `Tree area (acres)` = format(round(treeArea, 0), big.mark=",")) %>%
           dplyr::select(c(Year, `Production (tons)`, `Production gain/loss (tons)`, `Production gain/loss (%)`, `Tree area (acres)`)) %>%
           tableHTML(widths = c(100,150,150,150,150), rownames = FALSE) %>%
@@ -439,7 +449,6 @@ for(i in '31'){ #stas_fp_v
         # Generate rmarkdown reports
         rmarkdown::render("C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Scripts/ForageReports_html.Rmd",
                           output_file = paste(cty_dir, 'index', sep = ''),
-                          output_format = html_document(),
                           params = list(new_title = loc_name,
                                         main_df = cty_df,
                                         cty_sf = cty_sf,
@@ -464,6 +473,6 @@ for(i in '31'){ #stas_fp_v
       #                                 rap_url = rap_cty_url,
       #                                 type = 'County'))
 
-       }
+      }
   }
 

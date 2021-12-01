@@ -12,8 +12,11 @@ params:
   rap_url: params$rap_url
   main_dir: params$main_dir
   type: params$type
-output: 
-  html_document
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
 ---
 
 
@@ -22,16 +25,16 @@ output:
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
 
 body{ /* Normal  */
-      font-family: Open Sans; 
+      font-family: 'Open Sans', sans-serif;
       color: #2b2b2b;
   }
-  
+
 .table-span{
   display: inline-block;
   width: 80%;
   margin-left:10%;
-}  
-  
+}
+
 table.table-main {
   vertical-align: middle;
 }
@@ -54,12 +57,20 @@ table.table-main tbody td{
   font-style: italic;
 }
 
-.container {
-  position: relative;
+.leaflet {
+  z-index:1;
+}
+
+.header {
+  display: inline-block;
   text-align: left;
   color: black;
-  margin-left: 0px;
-  padding-left: 0px;
+  background-color:white;
+  margin-left: -325px;
+  padding-left: 0;
+  position: fixed;
+  z-index:3;
+  height:225px;
 }
 
 .header-title {
@@ -73,15 +84,25 @@ table.table-main tbody td{
 
 .header-subtitle {
   position: absolute;
-  bottom: 22px;
+  bottom: 30px;
   left: 16px;
   font-size: 3rem;
   font-weight: 500;
   text-shadow: 0 0 10px #FFFFFF, 0 0 20px #FFFFFF, 0 0 30px #FFFFFF, 0 0 40px #FFFFFF;
 }
 
-</style>
+.content{
+  position:absolute;
+  margin-top:225px;
+  height:400px
+}
 
+#TOC{
+  margin-top:225px;
+}
+
+
+</style>
 
 
 ```{r setup, include=FALSE}
@@ -103,17 +124,22 @@ library(tableHTML)
 knitr::opts_chunk$set(echo = TRUE, root.dir = here())
 ```
 
+```{r cache = FALSE, echo = F, warning = F, message = F}
+message(getwd())
+```
+
+
 ```{r echo = FALSE, warning = FALSE}
-htmltools::HTML(paste('<div class="container">
-                          <img src = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/banner_crop.jpg" width = "80%" style = "opacity: 0.7">
+htmltools::HTML(paste('<span class="header">
+                          <img src = "./Assets/Banner.jpg" height = "200px">
                           <div class="header-title">',
                       params$new_title,
                       '</div>
                           <div class="header-subtitle">Tree expansion and rangeland productivity report</div>
-                       </div>', sep = ''))
+                       </span>', sep = ''))
 ```
 
-
+<div class = "content">
 ```{r echo = FALSE, warning = FALSE}
 home_path = ifelse(params$type == 'County', '../../index.html', '../index.html')
 state_path = ifelse(params$type == 'County', '../index.html', 'index.html')
@@ -135,9 +161,10 @@ cty_name = ifelse(params$type == 'County', str_split(loc_name, ',')[[1]][1], '')
 <div style="margin-bottom:30px;">
 </div>
 
-> ##### ***[Click here to download this report as a PDF.](./index.pdf)***
+<!-- > ##### ***[Click here to download this report as a PDF.](./index.pdf)*** -->
 
-
+# Rangeland production gains/losses
+### Production loss key statistics
 ```{r echo = FALSE, warning = FALSE}
 main_df_rec <- params$main_df %>%
   filter(year == params$current_year) 
@@ -149,10 +176,10 @@ htmltools::HTML(paste(
         <tr>',
       ifelse(sum(-params$main_df$yieldgap) < 0,
           paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          'Total production gains/losses</32></th></center>',
+          'Total production gains/losses (1990-', params$current_year, ')</th></center>',
       ifelse(-main_df_rec$yieldgap < 0,
           paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          'Production gains/losses in 2019</h2></th></center>
+          'Production gains/losses in ', params$current_year, '</h2></th></center>
         </tr>
       </thead>
       <tbody>
@@ -173,9 +200,12 @@ htmltools::HTML(paste(
 sep = ''))
 ```
   
-## Rangeland production loss map
+<div style="margin-bottom:30px;">
+</div>
+  
+### Production loss map
 Click any county on the map below to access its report.
-```{r echo = FALSE, warning = FALSE, fig.width=10, fig.cap="The map above depicts percent production loss in 2019 relative to what would have been achievable had tree cover not changed since 1990. Counties that appear red have had the most production losses in the state as a result of tree cover increases."}
+```{r echo = FALSE, warning = FALSE, fig.width=10, fig.cap=paste("The map above depicts percent production loss in", params$current_year, "relative to what would have been achievable had tree cover not changed since 1990. Counties that appear red have had the most production losses in the state as a result of tree cover increases.")}
 
 # --------- Preliminaries -----------
 
@@ -185,13 +215,13 @@ sta_ctys_sf <- params$sta_ctys_sf
 # Scale ranges and palettes for controlling data visualization
 # Vector
 # Define color ramp -- adjusting bias factor to bias more colors for higher values and stretch color ramp to non-forest counties
-rampcols<- colorRampPalette(c("#ffffff","#fed976","#feb24c","#fd8d3c","#fc4e2a","#e31a1c","#b10026"), space = "Lab", bias = 2)(max(params$range_sta_ctys_sf$yieldgap_2019_norm)*1000)
-pal <- colorNumeric(rampcols, domain = c(0, max(params$range_sta_ctys_sf$yieldgap_2019_norm)), na.color = '#ffffff')
+rampcols<- colorRampPalette(c("#ffffff","#fed976","#feb24c","#fd8d3c","#fc4e2a","#e31a1c","#b10026"), space = "Lab", bias = 2)(max(params$range_sta_ctys_sf$yieldgap_curYear_norm)*1000)
+pal <- colorNumeric(rampcols, domain = c(0, max(range_ctys_sf$yieldgap_curYear_norm)), na.color = '#ffffff')
 
 # Functions to generate labels
 labs <- lapply(seq(nrow(sta_ctys_sf)), function(i) {
       lab<- paste0('<b>', sta_ctys_sf[i, "NAMELSAD"], '</b><br>',
-                   paste(as.character(format(round(as.numeric(sta_ctys_sf[i, "yieldgap_2019"]), 0), big.mark = ',')), ' tons (', round(as.numeric(sta_ctys_sf[i, "yieldgap_2019_norm"]), 1), '%) production loss in 2019<br>', sep = ''))
+                   paste(as.character(format(round(as.numeric(sta_ctys_sf[i, "yieldgap_curYear"]), 0), big.mark = ',')), ' tons (', round(as.numeric(sta_ctys_sf[i, "yieldgap_curYear_norm"]), 1), '%) production loss in ', params$current_year, '<br>', sep = ''))
       lab[1]})
 
 # Zoom level to control map display
@@ -248,14 +278,14 @@ if (params$type == 'County'){
                   options = pathOptions(pane = "forest_mask")) %>%
       #County choropleths
       addPolygons(data = params$forest_sta_ctys_sf,
-                  fillColor = ~pal(yieldgap_2019_norm),
+                  fillColor = ~pal(yieldgap_curYear_norm),
                   color = '#2b2b2b',
                   weight = 1,
                   opacity = 1,
                   fillOpacity = .4,
                   options = pathOptions(pane = "forest_polys")) %>%
       addPolygons(data = params$range_sta_ctys_sf,
-                  fillColor = ~pal(yieldgap_2019_norm),
+                  fillColor = ~pal(yieldgap_curYear_norm),
                   color = '#2b2b2b',
                   weight = 1,
                   opacity = 1,
@@ -271,7 +301,7 @@ if (params$type == 'County'){
                    options = pathOptions(pane = "sta_outline")) %>%
       # County polyline
       addPolylines(data = params$cty_sf,
-                  color = '#0000FF',
+                  color = '#2471B2',
                   weight = 4,
                   opacity = 1,
                   stroke = TRUE,
@@ -281,9 +311,10 @@ if (params$type == 'County'){
                     "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
                     "font-size" = "13px",
                     "margin" = "0px"))) %>%
-      addLegend(position = "bottomright", pal = pal, values = c(0, max(params$range_sta_ctys_sf$yieldgap_2019_norm)),
-                title = "Production<br>loss in 2019 (%)",
+      addLegend(position = "bottomright", pal = pal, values = c(0, max(params$range_sta_ctys_sf$yieldgap_curYear_norm)),
+                title = paste("Production<br>loss in ", params$current_year),
                 opacity = 1,
+                labFormat = labelFormat(suffix = '%'),
                 na.label = '') %>%
       setMapWidgetStyle(list(background = "white")) %>%
       htmlwidgets::onRender(jsOnClick) %>%
@@ -327,14 +358,14 @@ if (params$type == 'County'){
                   options = pathOptions(pane = "forest_mask")) %>%
       #County choropleths
       addPolygons(data = params$forest_sta_ctys_sf,
-                  fillColor = ~pal(yieldgap_2019_norm),
+                  fillColor = ~pal(yieldgap_curYear_norm),
                   color = '#2b2b2b',
                   weight = 1,
                   opacity = 1,
                   fillOpacity = .4,
                   options = pathOptions(pane = "forest_polys")) %>%
       addPolygons(data = params$range_sta_ctys_sf,
-                  fillColor = ~pal(yieldgap_2019_norm),
+                  fillColor = ~pal(yieldgap_curYear_norm),
                   color = '#2b2b2b',
                   weight = 1,
                   opacity = 1,
@@ -348,8 +379,9 @@ if (params$type == 'County'){
                    opacity = 1,
                    weight = 2,
                    options = pathOptions(pane = "sta_outline")) %>%
-      addLegend(position = "bottomright", pal = pal, values = c(0, max(params$range_sta_ctys_sf$yieldgap_2019_norm)),
-                title = "Production<br>loss in 2019 (%)",
+      addLegend(position = "bottomright", pal = pal, values = c(0, max(params$range_sta_ctys_sf$yieldgap_curYear_norm)),
+                title = paste("Production<br>loss in ", params$current_year),
+                labFormat = labelFormat(suffix = '%'),
                 opacity = 1,
                 na.label = '') %>%
       setMapWidgetStyle(list(background = "white")) %>%
@@ -375,7 +407,7 @@ if (params$type == 'County'){
 <div style="margin-bottom:50px;">
 </div>
 
-## Rangeland production loss plots
+### Production loss plots
 *The plots below depict herbaceous production gains/losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(params$current_year)`. The annual plot displays the same information as the map above.*
 ```{r echo = FALSE, fig.width=10}
 annYG_plot <- ggplot()+
@@ -407,7 +439,7 @@ cumYG_plot <- ggplot()+
 
 |
 |
-## Rangeland production and tree cover summary
+### Production and tree cover summary
 ```{r echo = FALSE, warning = FALSE}
 # Statistics for report
 figure_v <- c("See supplemental data",
@@ -451,20 +483,21 @@ kable(stat_df, col.names = NULL) %>%
   kable_styling()
 ```
 
-<div style="margin-bottom:50px;">
+<div style="margin-bottom:30px;">
 </div>
 
-## Rangeland vulnerability to trees   `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")`
-*The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`. See the state map in the "Rangeland vulnerability to trees" supplemental section below*
+# Rangeland vulnerability to trees   
+### Vulnerability to trees plot
+*The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`. See the state map in the "Rangeland vulnerability to trees" supplemental section below* `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")`
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
-bs_modal(id = "modalVulnerability", 
-         title = "Rangeland vulnerability classes", 
+bs_modal(id = "modalVulnerability",
+         title = "Rangeland vulnerability classes",
          body = htmltools::HTML(paste("
          <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
          <br>
          <p>The classes are described below:</p>
          <p align='center'>
-         <img src='C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/Vulnerability.png' width='300'> 
+         <img src='./Assets/Vulnerability.png' width='300px'>
          </p>
          <ul>
          <li><b>Intact rangeland:</b> Areas with less than 3% tree cover and *outside of* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
@@ -493,14 +526,13 @@ ggplot()+
         plot.title.position = "plot")
 ```
 
-<div style="margin-bottom:50px;">
+<div style="margin-bottom:30px;">
 </div>
 
 |
-## Supplemental data
+# Supplemental data
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
-htmltools::HTML(paste('
-<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingOne">
       <h4 class="panel-title">
@@ -528,8 +560,8 @@ htmltools::HTML(paste('
     <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
       <div class="panel-body">
         <img src="',
-  paste(params$main_dir, 'production.png', sep = ''),
-      '">
+        paste(params$main_dir, 'production.png', sep = ''),
+        '">
       </div>
     </div>
   </div>
@@ -544,7 +576,7 @@ htmltools::HTML(paste('
     <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
       <div class="panel-body">
         <img src="',
-  paste(params$main_dir, 'tree.png', sep = ''),
+        paste(params$main_dir, 'tree.png', sep = ''),
       '">
       </div>
     </div>
@@ -558,8 +590,9 @@ htmltools::HTML(paste('
       </h4>
     </div>
     <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
-      <div class="panel-body">
-        Test
+      <div class="panel-body"><img src="',
+      ifelse(params$type == 'State', paste(params$main_dir, 'vuln.png', sep = ''), paste(sta_dir, 'vuln.png', sep = '')),
+      '">
       </div>
     </div>
   </div>
@@ -585,7 +618,7 @@ htmltools::HTML(paste('
       </div>
     </div>
   </div>
-</div>', 
+</div>',
 sep = ''))
 
 
@@ -595,7 +628,7 @@ sep = ''))
 <div style="margin-bottom:35px;">
 </div>
 
-## Reference
+# Reference
 Access the complete data from which this report is derived:  
 
 * [View tree cover data in the Rangeland Analysis Platform web application](`r params$rap_url`){target="_blank"}
@@ -607,3 +640,5 @@ Access the complete data from which this report is derived:
 
 <div style="margin-bottom:35px;">
 </div>
+</div>
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 30px;"></div>

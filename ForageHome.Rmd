@@ -5,8 +5,11 @@ output: html_document
 
 <style type="text/css">
 
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+
 body{ /* Normal  */
-      font-family: Open Sans; 
+      font-family: 'Open Sans', sans-serif;
+      color: #2b2b2b;
   }
   
 .title{
@@ -49,9 +52,9 @@ library(leafem)
 
 ```{r echo = FALSE, warning = FALSE}
 htmltools::HTML(paste('<div class="container">
-                          <img src = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/banner_crop.jpg" width = "80%" style = "opacity: 0.7">
+                          <img src = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/Banner_crop.jpg" width = "80%" style = "opacity: 0.7">
                           <div class="header-title">
-                          Tree Encroachment and Rangeland<br>Productivity Loss Reports
+                          Rangeland Productivity Lost to<br>Woody Encroachment
                           </div>
                        </div>', sep = ''))
 ```
@@ -291,7 +294,7 @@ leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5,
 })()")
 ```
 
-## About the reports:
+## Supporting Information:
 
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
 htmltools::HTML(paste('
