@@ -13,10 +13,7 @@ params:
   main_dir: params$main_dir
   type: params$type
 output:
-  html_document:
-    toc: true
-    toc_float:
-      collapsed: false
+  html_document
 ---
 
 
@@ -32,7 +29,7 @@ body{ /* Normal  */
 .table-span{
   display: inline-block;
   width: 80%;
-  margin-left:10%;
+  margin: 20px 10%;
 }
 
 table.table-main {
@@ -58,7 +55,7 @@ table.table-main tbody td{
 }
 
 .leaflet {
-  z-index:1;
+  z-index:3;
 }
 
 .header {
@@ -66,11 +63,10 @@ table.table-main tbody td{
   text-align: left;
   color: black;
   background-color:white;
-  margin-left: -325px;
   padding-left: 0;
   position: fixed;
-  z-index:3;
-  height:225px;
+  z-index:9;
+  height:175px;
 }
 
 .header-title {
@@ -92,14 +88,9 @@ table.table-main tbody td{
 }
 
 .content{
-  position:absolute;
-  margin-top:225px;
-  height:400px
+  margin-top:175px;
 }
 
-#TOC{
-  margin-top:225px;
-}
 
 
 </style>
@@ -131,11 +122,11 @@ message(getwd())
 
 ```{r echo = FALSE, warning = FALSE}
 htmltools::HTML(paste('<span class="header">
-                          <img src = "./Assets/Banner.jpg" height = "200px">
+                          <img src = "./Assets/Banner.jpg" height = "150px">
                           <div class="header-title">',
                       params$new_title,
                       '</div>
-                          <div class="header-subtitle">Tree expansion and rangeland productivity report</div>
+                          <div class="header-subtitle">Rangeland Productivity Lost to Woody Encroachment</div>
                        </span>', sep = ''))
 ```
 
@@ -163,8 +154,7 @@ cty_name = ifelse(params$type == 'County', str_split(loc_name, ',')[[1]][1], '')
 
 <!-- > ##### ***[Click here to download this report as a PDF.](./index.pdf)*** -->
 
-# Rangeland production gains/losses
-### Production loss key statistics
+# Rangeland Productivity Lost to Woody Encroachment
 ```{r echo = FALSE, warning = FALSE}
 main_df_rec <- params$main_df %>%
   filter(year == params$current_year) 
@@ -174,24 +164,24 @@ htmltools::HTML(paste(
     <table class="table-main">
       <thead>
         <tr>',
-      ifelse(sum(-params$main_df$yieldgap) < 0,
-          paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          'Total production gains/losses (1990-', params$current_year, ')</th></center>',
       ifelse(-main_df_rec$yieldgap < 0,
           paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          'Production gains/losses in ', params$current_year, '</h2></th></center>
+          'Productivity lost to woody encroachment in ', params$current_year, '</h2></th></center>',
+      ifelse(sum(-params$main_df$yieldgap) < 0,
+          paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
+          'Cumulative productivity lost to woody encroachment (1990-', params$current_year, ')</th></center>
         </tr>
       </thead>
       <tbody>
         <tr>',
-      ifelse(sum(params$main_df$yieldgap) > 0,
-          paste('<td style="background-color:#FF000044; border: 3px solid black"><center>', sep = ''), paste('<td style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          ifelse(sum(params$main_df$yieldgap) > 0,
-                 paste(format(round(-sum(params$main_df$yieldgap),0), big.mark = ','), ' tons', sep = ''), paste('+', format(round(-sum(params$main_df$yieldgap),0), big.mark = ','), ' tons', sep = '')),
-          '</td></center>',
       ifelse(main_df_rec$yieldgap > 0,
           paste('<td style="background-color:#FF000044; border: 3px solid black"><center>', sep = ''), paste('<td style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          ifelse(main_df_rec$yieldgap > 0, paste(format(round(-main_df_rec$yieldgap,0), big.mark = ','), ' tons', sep = ''), paste('+', format(round(-main_df_rec$yieldgap,0), big.mark = ','), ' tons', sep = '')),
+          ifelse(main_df_rec$yieldgap > 0, paste(format(round(main_df_rec$yieldgap,0), big.mark = ','), ' tons', sep = ''), paste('No losses')),
+          '</td></center>',
+        ifelse(sum(params$main_df$yieldgap) > 0,
+          paste('<td style="background-color:#FF000044; border: 3px solid black"><center>', sep = ''), paste('<td style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
+          ifelse(sum(params$main_df$yieldgap) > 0,
+                 paste(format(round(sum(params$main_df$yieldgap),0), big.mark = ','), ' tons', sep = ''), paste('No losses')),
           '</td></center>
         </tr>
       </tbody>
@@ -203,7 +193,7 @@ sep = ''))
 <div style="margin-bottom:30px;">
 </div>
   
-### Production loss map
+### Productivity Losses Map
 Click any county on the map below to access its report.
 ```{r echo = FALSE, warning = FALSE, fig.width=10, fig.cap=paste("The map above depicts percent production loss in", params$current_year, "relative to what would have been achievable had tree cover not changed since 1990. Counties that appear red have had the most production losses in the state as a result of tree cover increases.")}
 
@@ -275,6 +265,7 @@ if (params$type == 'County'){
                   fillColor = 'grey',
                   fillOpacity = 1,
                   color = '#2b2b2b',
+                  smoothFactor = 0.5,
                   options = pathOptions(pane = "forest_mask")) %>%
       #County choropleths
       addPolygons(data = params$forest_sta_ctys_sf,
@@ -283,6 +274,7 @@ if (params$type == 'County'){
                   weight = 1,
                   opacity = 1,
                   fillOpacity = .4,
+                  smoothFactor = 0.5,
                   options = pathOptions(pane = "forest_polys")) %>%
       addPolygons(data = params$range_sta_ctys_sf,
                   fillColor = ~pal(yieldgap_curYear_norm),
@@ -290,6 +282,7 @@ if (params$type == 'County'){
                   weight = 1,
                   opacity = 1,
                   fillOpacity = 1,
+                  smoothFactor = 0.5,
                   options = pathOptions(pane = "range_polys")) %>%
       # State polygon
       addPolylines(data = params$sta_sf,
@@ -298,6 +291,7 @@ if (params$type == 'County'){
                    fillOpacity = 0,
                    opacity = 1,
                    weight = 2,
+                   smoothFactor = 0.5,
                    options = pathOptions(pane = "sta_outline")) %>%
       # County polyline
       addPolylines(data = params$cty_sf,
@@ -355,6 +349,7 @@ if (params$type == 'County'){
                   fillColor = 'grey',
                   fillOpacity = 1,
                   color = '#2b2b2b',
+                  smoothFactor = 0.5,
                   options = pathOptions(pane = "forest_mask")) %>%
       #County choropleths
       addPolygons(data = params$forest_sta_ctys_sf,
@@ -363,6 +358,7 @@ if (params$type == 'County'){
                   weight = 1,
                   opacity = 1,
                   fillOpacity = .4,
+                  smoothFactor = 0.5,
                   options = pathOptions(pane = "forest_polys")) %>%
       addPolygons(data = params$range_sta_ctys_sf,
                   fillColor = ~pal(yieldgap_curYear_norm),
@@ -370,6 +366,7 @@ if (params$type == 'County'){
                   weight = 1,
                   opacity = 1,
                   fillOpacity = 1,
+                  smoothFactor = 0.5,
                   options = pathOptions(pane = "range_polys")) %>%
       # State polygon
       addPolylines(data = params$sta_sf,
@@ -378,8 +375,11 @@ if (params$type == 'County'){
                    fillOpacity = 0,
                    opacity = 1,
                    weight = 2,
+                   smoothFactor = 0.5,
                    options = pathOptions(pane = "sta_outline")) %>%
-      addLegend(position = "bottomright", pal = pal, values = c(0, max(params$range_sta_ctys_sf$yieldgap_curYear_norm)),
+      addLegend(position = "bottomright", 
+                pal = pal, 
+                values = c(0, max(params$range_sta_ctys_sf$yieldgap_curYear_norm)),
                 title = paste("Production<br>loss in ", params$current_year),
                 labFormat = labelFormat(suffix = '%'),
                 opacity = 1,
@@ -407,94 +407,111 @@ if (params$type == 'County'){
 <div style="margin-bottom:50px;">
 </div>
 
-### Production loss plots
-*The plots below depict herbaceous production gains/losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(params$current_year)`. The annual plot displays the same information as the map above.*
-```{r echo = FALSE, fig.width=10}
+### Productivity Losses Plots
+*The plots below depict herbaceous production gains and losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(params$current_year)`. The annual plot displays the same information as the map above.*
+```{r echo = FALSE, warning = FALSE, fig.width=10}
+# Annual yield gap plot
 annYG_plot <- ggplot()+
   geom_line(params$main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 1)+
   geom_point(params$main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 2)+
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey30', size = 1)+
   labs(title = 'Annual herbaceous production gains/losses', y = 'Production gains/losses (tons)')+
-  coord_cartesian(ylim = c(-(max(abs(params$main_df$yieldgap)))*1.1,(max(abs(params$main_df$yieldgap)))*1.1))+
   scale_y_continuous(labels = comma)+
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_minimal()+
   theme(axis.title.x=element_blank(),
         plot.title.position = "plot")
 
+# Dataframe to control y-axis scaling
+scale_df <- params$main_df %>%
+  mutate(pctLossAbs = abs(yieldgap / (yieldgap + biomass)),
+         cumBiomass = cumsum(biomass),
+         cumPctLossAbs = abs(cumYieldGap / (cumYieldGap + cumBiomass)))
+
+# If else to control y-axis scaling for losses that are never greater than 0.5% in a given year
+if(max(scale_df$pctLossAbs) < 0.005){
+  annYG_plot <- annYG_plot+
+    coord_cartesian(ylim = c(-(mean(params$main_df$yieldgap) + mean(params$main_df$biomass)*0.007), (mean(params$main_df$yieldgap) + mean(params$main_df$biomass))*0.007))
+}else{
+  annYG_plot <- annYG_plot +
+    coord_cartesian(ylim = c(-(max(abs(params$main_df$yieldgap)))*1.1,(max(abs(params$main_df$yieldgap)))*1.1))
+}
+
+# Cumulative yield gap plot
 cumYG_plot <- ggplot()+
   geom_line(params$main_df, mapping = aes(x = year, y = -cumYieldGap), color = 'red', size = 1)+
   geom_point(params$main_df, mapping = aes(x = year, y = -cumYieldGap), color = 'red', size = 2)+
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey30', size = 1)+
   labs(title = 'Cumulative herbaceous production gains/losses', y = 'Production gains/losses (tons)')+
-  coord_cartesian(ylim = c((-max(abs(params$main_df$cumYieldGap)))*1.1,(max(abs(params$main_df$cumYieldGap)))*1.1))+
+  
   scale_y_continuous(labels = comma)+
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_minimal()+
   theme(axis.title.x=element_blank(),
         plot.title.position = "plot")
 
+# If else to control y-axis scaling for cumulative losses that are never greater than 0.5% in a given year
+if(max(scale_df$cumPctLossAbs) < 0.005){
+  cumYG_plot <- cumYG_plot +
+    coord_cartesian(ylim = c(-(mean(scale_df$cumYieldGap) + mean(scale_df$cumBiomass)*0.007), (mean(scale_df$cumYieldGap) + mean(scale_df$cumBiomass))*0.007))
+}else{
+  cumYG_plot <- cumYG_plot +
+    coord_cartesian(ylim = c((-max(abs(params$main_df$cumYieldGap)))*1.1,(max(abs(params$main_df$cumYieldGap)))*1.1))
+}
+
+# Compile the two plots
 (annYG_plot | cumYG_plot)
 ```
 
 |
 |
-### Production and tree cover summary
+### Productivity and Tree Cover Summary
 ```{r echo = FALSE, warning = FALSE}
 # Statistics for report
-figure_v <- c("See supplemental data",
-              "[See figure](#herbaceous-production-gainslosses)", 
-              "[See figure](#herbaceous-production-gainslosses)",
-              "See supplemental data", 
-              "See supplemental data", 
-              "", 
-              "")
 main_df_rec <- params$main_df %>%
   filter(year == params$current_year) 
 
 stat_df <- tibble(init = 10)
-stat_df[, paste('Herbaceous production in', as.character(params$current_year))] = paste(as.character(round(main_df_rec$biomass,0)), 'tons')
+stat_df[, paste('Rangeland production in', as.character(params$current_year))] = paste(as.character(round(main_df_rec$biomass,0)), 'tons')
 prodChangeCum <- -round(main_df_rec$yieldgap,0)
 prodChangePct <- -round(main_df_rec$yieldgap / (main_df_rec$yieldgap + main_df_rec$biomass)*100,2)
-stat_df[, paste('Herbaceous production gains/losses in', as.character(params$current_year))] <- ifelse(prodChangeCum >= 0, paste('+', as.character(prodChangeCum), ' tons (+', prodChangePct, '%)', sep = ''), paste('-', as.character(prodChangeCum), ' tons (-', prodChangePct, '%)', sep = ''))
+stat_df[, paste('Rangeland production losses in', as.character(params$current_year))] <- ifelse(prodChangeCum >= 0, paste('No losses'), paste(as.character(-prodChangeCum), ' tons (', -prodChangePct, '%)', sep = ''))
 prodChangeCur <- -round(sum(params$main_df$yieldgap),0)
-stat_df[, paste('Herbaceous production gains/losses since 1990')] <- ifelse(prodChangeCur >= 0, paste('+', as.character(prodChangeCur), ' tons', sep = ''), paste('-', as.character(prodChangeCur), ' tons', sep = '')) 
+stat_df[, paste('Cumulative rangeland production losses since 1990')] <- ifelse(prodChangeCur >= 0, paste('No losses'), paste(as.character(-prodChangeCur), ' tons', sep = '')) 
 stat_df[, paste('Tree cover in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeArea,0)), 'acres')
 treeAreaChange <- round((tail(params$main_df$treeArea, n = 1)) - (head(params$main_df$treeArea, n = 1)), 0)
 stat_df[, paste('Tree cover change since 1990')] <- ifelse(treeAreaChange >= 0, paste('+', as.character(treeAreaChange), ' acres', sep = ''), paste('-', as.character(treeAreaChange), ' acres', sep = ''))
 stat_df[, paste('Tree cover percent in', as.character(params$current_year))] <- paste(as.character(round(main_df_rec$treeCover,2)),'%', sep = '')
 treePctChange <- round((tail(params$main_df$treeCover, n = 1)) - (head(params$main_df$treeCover, n = 1)), 2)
-stat_df[, paste('Tree cover percent change since 1990')] <- ifelse(treePctChange >= 0, paste('+', as.character(treePctChange), '%', sep = ''), paste('-', as.character(treePctChange), '%', sep = ''))
+stat_df[, paste('Tree cover percent change since 1990')] <- ifelse(treePctChange >= 0, paste('+', as.character(treePctChange), '%', sep = ''), paste(as.character(treePctChange), '%', sep = ''))
 
 stat_df <- stat_df[,2:8]
 
 stat_df <- stat_df %>%
   t() %>%
   melt() %>%
-  mutate(Figure = figure_v[row_number()],
+  mutate(
          Value = prettyNum(value, big.mark = ",")) %>%
-  dplyr::select(c(Variable = Var1, Value, Figure))
+  dplyr::select(c(Variable = Var1, Value))
 
 kable(stat_df, col.names = NULL) %>%
   column_spec(1, width = "15cm") %>%
   column_spec(2, width = "5cm") %>%
-  column_spec(3, width = "5cm") %>%
   row_spec(1:6, hline_after = TRUE) %>%
   kable_styling()
 ```
 
-<div style="margin-bottom:30px;">
+<div style="margin-bottom:50px;">
 </div>
 
-# Rangeland vulnerability to trees   
-### Vulnerability to trees plot
-*The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`. See the state map in the "Rangeland vulnerability to trees" supplemental section below* `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")`
+# Rangeland Vulnerability to Woody Encroachment `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")` 
+### Vulnerability to Woody Encroachment Plot
+*The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`. See the state map in the collapsible section below the plot titled, "Vulnerability to Woody Encroachment State Map"* 
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
 bs_modal(id = "modalVulnerability",
          title = "Rangeland vulnerability classes",
          body = htmltools::HTML(paste("
          <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
-         <br>
          <p>The classes are described below:</p>
          <p align='center'>
          <img src='./Assets/Vulnerability.png' width='300px'>
@@ -504,11 +521,11 @@ bs_modal(id = "modalVulnerability",
          <li><b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but *within* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
          <li><b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.</li>
          <li><b>Forest/Woodland:</b> Areas with greater than 20% tree cover. These areas include primary forest, as well as woodlands and invaded rangelands.</li>
-         <br>
+         </ul>
          <p>These vulnerability classes are based on the schmatic outlined in the Working Lands for Wildlife's Great Plains Framework for Conservation Action. <a href = 'https://wlfw.rangelands.app/assets/greatPlainsFramework.pdf#page=15' target='_blank'> Learn more here.</a></p>", sep = '')))
 
 plot_df <- params$main_df %>%
-  dplyr::select(c(year, `At-risk` = classAtRisk, Intact = classIntact)) %>%
+  dplyr::select(c(year, `Intact rangeland, at-risk` = classAtRisk, `Intact rangeland` = classIntact)) %>%
   melt(id = 'year')
 
 ggplot()+
@@ -516,8 +533,8 @@ ggplot()+
   labs(y = 'Area (acres)', title = '')+
   scale_fill_manual(
         values = c(
-          `At-risk` = "#FDE64B",
-          Intact = "#00B050"))+
+          `Intact rangeland, at-risk` = "#FDE64B",
+          `Intact rangeland` = "#00B050"))+
   scale_y_continuous(labels = comma)+
   theme_minimal()+
   theme(legend.title = element_blank(),
@@ -529,39 +546,82 @@ ggplot()+
 <div style="margin-bottom:30px;">
 </div>
 
-|
-# Supplemental data
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
-htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+htmltools::HTML(paste(
+  '<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingOne">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-          Annual data table
+          Vulnerability to Woody Encroachment State Map
         </a>
       </h4>
     </div>
     <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
-      <div class="panel-body">
-        <object type="text/html" data="./data.html" width=800 height=975></object>
+      <div class="panel-body"><img src="',
+      ifelse(params$type == 'State', paste(params$main_dir, 'vuln.png', sep = ''), paste(sta_dir, 'vuln.png', sep = '')),
+      '">
         <br>
-        <p><a href="data.csv">Download data table as CSV</a></p>
-      </div>
+        <br>',
+        # <h4>More information about Rangeland Vulnerability to Woody Encroachment</h4>
+        # Woody encroachment has emerged as a global threat to grassland biomes and the people, plants and animals that depend on them. As a result of increasing exposure to woody seed sources, many rangelands have become increasingly vulnerable to
+        # woodland encroachment. With the advent of satellite-derived measures of tree cover and rangeland productivity, rangeland management is poised to adapt to a more proactive management strategy for woody encroachment that confronts underlying
+        # risks and weaknesses before problems arise.
+        # <br>
+        # <br>
+        # These reports support an integrated framework for reducing grassland vulnerability to woody plant encroachment, as outlined in <a href="https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">A
+        #   Guide
+        #   to Reducing Risk and Vulnerability to Woody Encroachment and Rangelands.</a>
+        # <br>
+        # <br>
+        # The rangeland vulnerability maps and time-series plots in these reports leverage the approach, depicted below, for mapping various stages of encroachment to better target management and reduce future vulnerability.
+        # <br>
+        # <br>
+        # <center><img src="./Assets/WLFW_Vulnerability.PNG" height="500px"></center>
+      '</div>
     </div>
   </div>
+</div>', sep = ''))
+```
+
+<div style="margin-bottom:30px;">
+</div>
+
+|
+# Supplemental Information
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+htmltools::HTML(paste(
+  '<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
   <div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingTwo">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-          Herbaceous production plot
+          Calculating Rangeland Productivity Losses to Woody Encroachment
         </a>
       </h4>
     </div>
     <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
       <div class="panel-body">
-        <img src="',
-        paste(params$main_dir, 'production.png', sep = ''),
-        '">
+        The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and
+        county summaries.
+        <br>
+        <br>
+        Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we
+        acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to
+        characterize this biological process. Ultimately, this model characterizes productivity losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
+        <br>
+        <br>
+        Productivity is the most fundamental and important metric in rangelands and measuring losses in productivity to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock,
+        and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
+        <br>
+        <br>
+        The production loss statistics and figures presented in these reports are derived from the analysis in <a href="https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation
+          potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which
+        the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a
+        satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below.
+        <br>
+        <br>
+        <center><img src="../Assets/YieldGap.png" width="600"></center>
       </div>
     </div>
   </div>
@@ -569,15 +629,14 @@ htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" ar
     <div class="panel-heading" role="tab" id="headingThree">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-          Tree cover plot
+          Calculating Tree Cover Change
         </a>
       </h4>
     </div>
     <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
       <div class="panel-body">
-        <img src="',
-        paste(params$main_dir, 'tree.png', sep = ''),
-      '">
+        Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href="https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute
+        values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
       </div>
     </div>
   </div>
@@ -585,29 +644,13 @@ htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" ar
     <div class="panel-heading" role="tab" id="headingFour">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-          Rangeland vulnerability map
+          Analysis Area Summary Statistics
         </a>
       </h4>
     </div>
     <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
-      <div class="panel-body"><img src="',
-      ifelse(params$type == 'State', paste(params$main_dir, 'vuln.png', sep = ''), paste(sta_dir, 'vuln.png', sep = '')),
-      '">
-      </div>
-    </div>
-  </div>
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingFive">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-          Analysis area
-        </a>
-      </h4>
-    </div>
-    <div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">
       <div class="panel-body">
-        <p>These reports estimate herbaceous production changes for less intensively modified areas across the western US and, thus, exclude some land cover types from analysis.</p>
-        <p>The values in the table below are:</p>
+        <p>These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for:</p>
         <ul>
           <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
           <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database
@@ -618,27 +661,179 @@ htmltools::HTML(paste('<div class="panel-group" id="accordion" role="tablist" ar
       </div>
     </div>
   </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingFive">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+          Additional Information and Resources
+        </a>
+      </h4>
+    </div>
+    <div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">
+      <div class="panel-body">
+        <p>Supplemental data resources:</p>
+        <ul>
+          <li><a href="',
+            paste(params$rap_url),
+            '" target="_blank">View tree cover data in the Rangeland Analysis Platform web application. </a></li>
+          <li><a href="./index.pdf" target="_blank">Download this report as a PDF. </a></li>
+          <li><a href="./data.csv" target="_blank">Download the data table used to produce this report. </a></li>
+        </ul>
+        <p>Supplemental information about tree encroachment on rangelands:</p>
+        <ul>
+          <li><a href="https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
+          <li><a href="https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage woody encroachment and reduce the risk and vulnerability to rangeland production.
+            </a></li>
+          <li>Learn more about the NRCS Working Lands for Wildlife strategy on Woodland Expansion in the <a href="https://wlfw.rangelands.app/great-plains/woodland-expansion/" target="_blank">Great Plains</a> and <a
+              href="https://wlfw.rangelands.app/sagebrush/woodland-expansion/" target="_blank">Sagebrush biomes. </a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingOne">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+          Calculating Rangeland Productivity Losses to Woody Encroachment
+        </a>
+      </h4>
+    </div>
+    <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+      <div class="panel-body">
+      The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries.
+          <br>
+          <br>
+          Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes productivity losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
+          <br>
+          <br>
+          Productivity is the most fundamental and important metric in rangelands and measuring losses in productivity to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
+          <br>
+          <br>
+          The production loss statistics and figures presented in these reports are derived from the analysis in <a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below.
+          <br>
+          <br>
+          <center><img src="../Assets/YieldGap.png" width="600"></center>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingTwo">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+          Calculating Tree Cover Change
+        </a>
+      </h4>
+    </div>
+    <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+      <div class="panel-body">
+         Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href = "https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingThree">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+        Analysis Area Summary Statistics
+        </a>
+      </h4>
+    </div>
+    <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+      <div class="panel-body">
+        These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for:
+        <br>
+        <ul>
+        <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
+        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers.</li>
+        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading" role="tab" id="headingFour">
+      <h4 class="panel-title">
+        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+          Additional Information and Resources
+        </a>
+      </h4>
+    </div>
+    <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
+      <div class="panel-body">
+      <ul>
+      <li><a href = "https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree" target="_blank">View tree cover data in the Rangeland Analysis Platform web application. </a></li>
+      <li><a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
+      <li><a href = "https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage woody encroachment and reduce the risk and vulnerability to rangeland production. </a></li>
+      <li>Learn more about the NRCS Working Lands for Wildlife strategy on Woodland Expansion in the <a href = "https://wlfw.rangelands.app/great-plains/woodland-expansion/" target="_blank">Great Plains</a> and <a href = "https://wlfw.rangelands.app/sagebrush/woodland-expansion/" target="_blank">Sagebrush biomes. </a></li>
+      </ul>
+      </div>
+    </div>
+  </div>
 </div>',
 sep = ''))
 
+  # Additional panels
+  #<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+  # <div class="panel panel-default">
+  #   <div class="panel-heading" role="tab" id="headingOne">
+  #     <h4 class="panel-title">
+  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+  #         Annual data table
+  #       </a>
+  #     </h4>
+  #   </div>
+  #   <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+  #     <div class="panel-body">
+  #       <object type="text/html" data="./data.html" width=800 height=975></object>
+  #       <br>
+  #       <p><a href="data.csv">Download data table as CSV</a></p>
+  #     </div>
+  #   </div>
+  # </div>
+  # <div class="panel panel-default">
+  #   <div class="panel-heading" role="tab" id="headingTwo">
+  #     <h4 class="panel-title">
+  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+  #         Herbaceous production plot
+  #       </a>
+  #     </h4>
+  #   </div>
+  #   <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+  #     <div class="panel-body">
+  #       <img src="',
+  #       paste(params$main_dir, 'production.png', sep = ''),
+  #       '">
+  #     </div>
+  #   </div>
+  # </div>
+  # <div class="panel panel-default">
+  #   <div class="panel-heading" role="tab" id="headingThree">
+  #     <h4 class="panel-title">
+  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+  #         Tree cover plot
+  #       </a>
+  #     </h4>
+  #   </div>
+  #   <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+  #     <div class="panel-body">
+  #       <img src="',
+  #       paste(params$main_dir, 'tree.png', sep = ''),
+  #     '">
+  #     </div>
+  #   </div>
+  # </div>
 
 ```
-
 
 <div style="margin-bottom:35px;">
 </div>
 
-# Reference
-Access the complete data from which this report is derived:  
-
-* [View tree cover data in the Rangeland Analysis Platform web application](`r params$rap_url`){target="_blank"}
-* [Download this report as a PDF.](./index.pdf)
-* [Download the CSV for this report.](./data.csv)  
-
-  
 *Report generated on `r Sys.Date()`.*
 
 <div style="margin-bottom:35px;">
 </div>
 </div>
-<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 30px;"></div>

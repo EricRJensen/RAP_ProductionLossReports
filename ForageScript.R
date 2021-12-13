@@ -119,7 +119,7 @@ ctys_sf <- ctys_sf %>%
   left_join(ctys_df_yg_curYear, by = 'FIPS') 
 
 # Separate forested from non forested counties using LANDFIRE BPS data
-forestThreshold = 0.4
+forestThreshold = 0.3
 forest_ctys_sf <- filter(ctys_sf, pct_for > forestThreshold) %>%
   st_transform(4326)
 range_ctys_sf <- filter(ctys_sf, pct_for < forestThreshold) %>%
@@ -146,7 +146,7 @@ stas_sf <- left_join(stas_sf, stas_df, by = 'STATEFP')
 rm(ctys_yieldgap_df, ctys_df_yg_curYear, forestThreshold, calc_states)
 
 # ---------------------- Nested loop to generate state and county reports -----------------------------
-for(i in '31'){ #stas_fp_v
+for(i in '35'){ #stas_fp_v
   
   # Subset state sf object for current state
   sta_sf <- filter(stas_sf, STATEFP == i)
@@ -170,8 +170,8 @@ for(i in '31'){ #stas_fp_v
   # Subset county sf object for current state's counties for labels and on-click functionality
   sta_ctys_sf <- ctys_sf %>%
     filter(STATEFP == i) %>%
-    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/index.html', sep = ''),
-           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/index.html', sep = '')) 
+    mutate(up_path = paste('../',str_replace_all(NAME, ' ', ''), '/index.html', sep = '') %>% stringr::str_replace_all("ñ", "n"),
+           dn_path = paste('./',str_replace_all(NAME, ' ', ''), '/index.html', sep = '') %>% stringr::str_replace_all("ñ", "n")) 
   
   # Generate RAP url for county
   coords <- sta_sf %>% 
@@ -186,7 +186,6 @@ for(i in '31'){ #stas_fp_v
     filter(STATEFP == i) %>%
     group_by(year) %>%
     mutate(treeArea = sum(treeArea),
-           treeCover = mean(treeCover),
            biomass = sum(biomass),
            yieldgap = sum(yieldgap),
            classWoodlands = sum(classWoodlands),
@@ -195,7 +194,8 @@ for(i in '31'){ #stas_fp_v
            classAtRisk = sum(classAtRisk),
            classIntact = sum(classIntact),
            analysisArea = sum(analysisArea),
-           totalArea = sum(countyArea)) %>%
+           totalArea = sum(countyArea),
+           treeCover = (treeArea/analysisArea)*100) %>%
     dplyr::select(-c(COUNTYFP, NAME, treedArea, COUNTYID, countyArea, BPS_Forest)) %>%
     ungroup() %>%
     unique() %>%
@@ -345,7 +345,7 @@ for(i in '31'){ #stas_fp_v
   #                                 rap_url = rap_sta_url,
   #                                 type = 'State'))
 
-      for(j in '31031'){#sta_ctys_v
+      for(j in sta_ctys_v[1:3]){#sta_ctys_v
 
         # Subset to county sf object and name
         cty_sf <- filter(ctys_sf, FIPS == j) #dataframe with county names
@@ -353,7 +353,8 @@ for(i in '31'){ #stas_fp_v
         #Create county directory
         cty_name_s <- str_replace_all(cty_sf$NAME, ' ', '')
         cty_name_l <- cty_sf$NAMELSAD #county name
-        cty_dir <- paste(sta_dir, cty_name_s, '/', sep = '')
+        cty_dir <- paste(sta_dir, cty_name_s, '/', sep = '') %>%
+          stringr::str_replace_all("ñ", "n")
         dir.create(cty_dir)
 
         # Location name as title parameter for RMD
@@ -407,7 +408,7 @@ for(i in '31'){ #stas_fp_v
           dplyr::select(c(` ` = Var1, Area = Value))
 
         char_html <- char_df %>%
-          tableHTML(widths = c(300,200), rownames = FALSE, caption = paste('Analysis area summary for', sta_name)) %>%
+          tableHTML(widths = c(300,200), rownames = FALSE, caption = paste('Analysis area summary for', loc_name)) %>%
           add_css_row(css = list(c('background-color', 'text-align', 'height', 'font-family', 'font-size', 'border-color'), c('#FFFFFF', 'center', '30px', 'Open Sans', '0.9rem', '#00000055 #FFFFFF00 #00000055 #FFFFFF00')), rows = 1:4)  %>%
           add_css_caption(css = list(c('font-size', 'font-family', 'text-align', 'margin-bottom'), c('1rem', 'Open sans', 'left', '8px')))
 
