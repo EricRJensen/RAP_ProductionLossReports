@@ -101,7 +101,7 @@ options(scipen=999)
 
 # Read-in and filter data
 # Read in production csv and filter for county of interest
-ctys_df <- read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20210730.csv') %>%
+ctys_df <- read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20211218.csv') %>%
   mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),#FIPS code
          biomass = biomass / 2000,
          yieldgap = yieldgap / 2000,
@@ -303,7 +303,7 @@ rm(i, i_js, js_str, jsOnClick_end, jsOnClick_mid, jsOnClick_srt, sta_paths, url)
 # --------- Interactive map -------------
 
 # Separate forested from non forested counties using LANDFIRE BPS data
-forestThreshold = 0.3
+forestThreshold = 0.5
 forest_ctys_sf <- filter(ctys_sf, pct_for > forestThreshold) %>%
   st_transform(4326)
 nonFor_ctys_sf <- filter(ctys_sf, pct_for < forestThreshold) %>%
@@ -397,7 +397,7 @@ leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5,
 
 ### Productivity Losses Plots
 *The plots below depict herbaceous production gains and losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(current_year)`. The annual plot displays the same information as the map above.*
-```{r echo = FALSE, fig.width=10}
+```{r echo = FALSE, fig.height=5}
 annYG_plot <- ggplot()+
   geom_line(main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 1)+
   geom_point(main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 2)+
@@ -460,46 +460,49 @@ kable(stat_df, col.names = NULL) %>%
   kable_styling()
 ```
 
-<div style="margin-bottom:50px;">
-</div>
-
-# Rangeland Vulnerability to Woody Encroachment `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")` 
-### Vulnerability to Woody Encroachment Plot
-*The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(current_year)`. See the state map in the collapsible section below the plot titled, "Vulnerability to Woody Encroachment State Map"* 
-```{r echo = FALSE, warning = FALSE, fig.width=10}
-bs_modal(id = "modalVulnerability",
-         title = "Rangeland vulnerability classes",
-         body = htmltools::HTML(paste("
-         <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
-         <p>The classes are described below:</p>
-         <p align='center'>
-         <img src='./Assets/Vulnerability.png' width='300px'>
-         </p>
-         <ul>
-         <li><b>Intact rangeland:</b> Areas with less than 3% tree cover and *outside of* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
-         <li><b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but *within* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
-         <li><b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.</li>
-         <li><b>Forest/Woodland:</b> Areas with greater than 20% tree cover. These areas include primary forest, as well as woodlands and invaded rangelands.</li>
-         </ul>
-         <p>These vulnerability classes are based on the schmatic outlined in the Working Lands for Wildlife's Great Plains Framework for Conservation Action. <a href = 'https://wlfw.rangelands.app/assets/greatPlainsFramework.pdf#page=15' target='_blank'> Learn more here.</a></p>", sep = '')))
-
-plot_df <- main_df %>%
-  dplyr::select(c(year, `Intact rangeland, at-risk` = classAtRisk, `Intact rangeland` = classIntact)) %>%
-  melt(id = 'year')
-
-ggplot()+
-  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), colour="grey30", size = 0.75, width = 1, position = position_dodge(width = 1), stat = "identity")+
-  labs(y = 'Area (acres)', title = '')+
-  scale_fill_manual(
-        values = c(
-          `Intact rangeland, at-risk` = "#FDE64B",
-          `Intact rangeland` = "#00B050"))+
-  scale_y_continuous(labels = comma)+
-  theme_minimal()+
-  theme(legend.title = element_blank(),
-        legend.position="bottom",
-        axis.title.x=element_blank(),
-        plot.title.position = "plot")
+ 
+```{r echo = FALSE, warning = FALSE, fig.height=5}
+# # Header
+# <div style="margin-bottom:50px;">
+# </div>
+# 
+# # Rangeland Vulnerability to Woody Encroachment `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")` 
+# ### Vulnerability to Woody Encroachment Plot
+# *The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(current_year)`. See the state map in the collapsible section below the plot titled, "Vulnerability to Woody Encroachment State Map"*
+# 
+# bs_modal(id = "modalVulnerability",
+#          title = "Rangeland vulnerability classes",
+#          body = htmltools::HTML(paste("
+#          <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
+#          <p>The classes are described below:</p>
+#          <p align='center'>
+#          <img src='./Assets/Vulnerability.png' width='300px'>
+#          </p>
+#          <ul>
+#          <li><b>Intact rangeland:</b> Areas with less than 3% tree cover and *outside of* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
+#          <li><b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but *within* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
+#          <li><b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.</li>
+#          <li><b>Forest/Woodland:</b> Areas with greater than 20% tree cover. These areas include primary forest, as well as woodlands and invaded rangelands.</li>
+#          </ul>
+#          <p>These vulnerability classes are based on the schmatic outlined in the Working Lands for Wildlife's Great Plains Framework for Conservation Action. <a href = 'https://wlfw.rangelands.app/assets/greatPlainsFramework.pdf#page=15' target='_blank'> Learn more here.</a></p>", sep = '')))
+# 
+# plot_df <- main_df %>%
+#   dplyr::select(c(year, `Intact rangeland, at-risk` = classAtRisk, `Intact rangeland` = classIntact)) %>%
+#   melt(id = 'year')
+# 
+# ggplot()+
+#   geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), colour="grey30", size = 0.75, width = 1, position = position_dodge(width = 1), stat = "identity")+
+#   labs(y = 'Area (acres)', title = '')+
+#   scale_fill_manual(
+#         values = c(
+#           `Intact rangeland, at-risk` = "#FDE64B",
+#           `Intact rangeland` = "#00B050"))+
+#   scale_y_continuous(labels = comma)+
+#   theme_minimal()+
+#   theme(legend.title = element_blank(),
+#         legend.position="bottom",
+#         axis.title.x=element_blank(),
+#         plot.title.position = "plot")
 ```
 
 <div style="margin-bottom:30px;">

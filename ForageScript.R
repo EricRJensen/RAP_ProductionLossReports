@@ -14,7 +14,7 @@ options(scipen=999)
 
 # Read-in and filter data
 # Read in production csv and filter for county of interest
-ctys_df <- read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20210730.csv') %>%
+ctys_df <- read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20211218.csv') %>%
   mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),#FIPS code
          biomass = biomass / 2000,
          yieldgap = yieldgap / 2000,
@@ -119,7 +119,7 @@ ctys_sf <- ctys_sf %>%
   left_join(ctys_df_yg_curYear, by = 'FIPS') 
 
 # Separate forested from non forested counties using LANDFIRE BPS data
-forestThreshold = 0.3
+forestThreshold = 0.5
 forest_ctys_sf <- filter(ctys_sf, pct_for > forestThreshold) %>%
   st_transform(4326)
 range_ctys_sf <- filter(ctys_sf, pct_for < forestThreshold) %>%
@@ -146,7 +146,7 @@ stas_sf <- left_join(stas_sf, stas_df, by = 'STATEFP')
 rm(ctys_yieldgap_df, ctys_df_yg_curYear, forestThreshold, calc_states)
 
 # ---------------------- Nested loop to generate state and county reports -----------------------------
-for(i in '35'){ #stas_fp_v
+for(i in stas_fp_v[17]){ #stas_fp_v
   
   # Subset state sf object for current state
   sta_sf <- filter(stas_sf, STATEFP == i)
@@ -345,7 +345,7 @@ for(i in '35'){ #stas_fp_v
   #                                 rap_url = rap_sta_url,
   #                                 type = 'State'))
 
-      for(j in sta_ctys_v[1:3]){#sta_ctys_v
+      for(j in sta_ctys_v){#sta_ctys_v
 
         # Subset to county sf object and name
         cty_sf <- filter(ctys_sf, FIPS == j) #dataframe with county names

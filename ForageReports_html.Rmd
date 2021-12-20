@@ -501,87 +501,93 @@ kable(stat_df, col.names = NULL) %>%
   kable_styling()
 ```
 
-<div style="margin-bottom:50px;">
-</div>
 
-# Rangeland Vulnerability to Woody Encroachment `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")` 
-### Vulnerability to Woody Encroachment Plot
-*The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`. See the state map in the collapsible section below the plot titled, "Vulnerability to Woody Encroachment State Map"* 
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
-bs_modal(id = "modalVulnerability",
-         title = "Rangeland vulnerability classes",
-         body = htmltools::HTML(paste("
-         <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
-         <p>The classes are described below:</p>
-         <p align='center'>
-         <img src='./Assets/Vulnerability.png' width='300px'>
-         </p>
-         <ul>
-         <li><b>Intact rangeland:</b> Areas with less than 3% tree cover and *outside of* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
-         <li><b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but *within* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
-         <li><b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.</li>
-         <li><b>Forest/Woodland:</b> Areas with greater than 20% tree cover. These areas include primary forest, as well as woodlands and invaded rangelands.</li>
-         </ul>
-         <p>These vulnerability classes are based on the schmatic outlined in the Working Lands for Wildlife's Great Plains Framework for Conservation Action. <a href = 'https://wlfw.rangelands.app/assets/greatPlainsFramework.pdf#page=15' target='_blank'> Learn more here.</a></p>", sep = '')))
-
-plot_df <- params$main_df %>%
-  dplyr::select(c(year, `Intact rangeland, at-risk` = classAtRisk, `Intact rangeland` = classIntact)) %>%
-  melt(id = 'year')
-
-ggplot()+
-  geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), colour="grey30", size = 0.75, width = 1, position = position_dodge(width = 1), stat = "identity")+
-  labs(y = 'Area (acres)', title = '')+
-  scale_fill_manual(
-        values = c(
-          `Intact rangeland, at-risk` = "#FDE64B",
-          `Intact rangeland` = "#00B050"))+
-  scale_y_continuous(labels = comma)+
-  theme_minimal()+
-  theme(legend.title = element_blank(),
-        legend.position="bottom",
-        axis.title.x=element_blank(),
-        plot.title.position = "plot")
+# #Header
+# <div style="margin-bottom:50px;">
+# </div>
+# 
+# # Rangeland Vulnerability to Woody Encroachment `r bs_button("?") %>% bs_attach_modal(id_modal = "modalVulnerability")` 
+# ### Vulnerability to Woody Encroachment Plot
+# *The plot below depicts annual trends in intact and at-risk rangeland classes for the period of 1990-`r as.character(params$current_year)`. See the state map in the collapsible section below the plot titled, "Vulnerability to Woody Encroachment State Map"* 
+# 
+# bs_modal(id = "modalVulnerability",
+#          title = "Rangeland vulnerability classes",
+#          body = htmltools::HTML(paste("
+#          <p>The <i>Rangeland vulnerability</i> layer in the State map and the <i>Rangeland vulnerability</i> plot depict the same information in slightly different ways.</p>
+#          <p>The classes are described below:</p>
+#          <p align='center'>
+#          <img src='./Assets/Vulnerability.png' width='300px'>
+#          </p>
+#          <ul>
+#          <li><b>Intact rangeland:</b> Areas with less than 3% tree cover and *outside of* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
+#          <li><b>Intact rangeland, at risk:</b> Areas with less than 3% tree cover, but *within* a dispersal range of 200 meters of any area with greater than 3% tree cover.</li>
+#          <li><b>Low/moderate tree cover:</b> Areas with 3-20% tree cover.</li>
+#          <li><b>Forest/Woodland:</b> Areas with greater than 20% tree cover. These areas include primary forest, as well as woodlands and invaded rangelands.</li>
+#          </ul>
+#          <p>These vulnerability classes are based on the schmatic outlined in the Working Lands for Wildlife's Great Plains Framework for Conservation Action. <a href = 'https://wlfw.rangelands.app/assets/greatPlainsFramework.pdf#page=15' target='_blank'> Learn more here.</a></p>", sep = '')))
+# 
+# plot_df <- params$main_df %>%
+#   dplyr::select(c(year, `Intact rangeland, at-risk` = classAtRisk, `Intact rangeland` = classIntact)) %>%
+#   melt(id = 'year')
+# 
+# ggplot()+
+#   geom_bar(plot_df, mapping = aes(fill = variable, x = year, y = value), colour="grey30", size = 0.75, width = 1, position = position_dodge(width = 1), stat = "identity")+
+#   labs(y = 'Area (acres)', title = '')+
+#   scale_fill_manual(
+#         values = c(
+#           `Intact rangeland, at-risk` = "#FDE64B",
+#           `Intact rangeland` = "#00B050"))+
+#   scale_y_continuous(labels = comma)+
+#   theme_minimal()+
+#   theme(legend.title = element_blank(),
+#         legend.position="bottom",
+#         axis.title.x=element_blank(),
+#         plot.title.position = "plot")
 ```
 
-<div style="margin-bottom:30px;">
-</div>
+
 
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
-htmltools::HTML(paste(
-  '<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingOne">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-          Vulnerability to Woody Encroachment State Map
-        </a>
-      </h4>
-    </div>
-    <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
-      <div class="panel-body"><img src="',
-      ifelse(params$type == 'State', paste(params$main_dir, 'vuln.png', sep = ''), paste(sta_dir, 'vuln.png', sep = '')),
-      '">
-        <br>
-        <br>',
-        # <h4>More information about Rangeland Vulnerability to Woody Encroachment</h4>
-        # Woody encroachment has emerged as a global threat to grassland biomes and the people, plants and animals that depend on them. As a result of increasing exposure to woody seed sources, many rangelands have become increasingly vulnerable to
-        # woodland encroachment. With the advent of satellite-derived measures of tree cover and rangeland productivity, rangeland management is poised to adapt to a more proactive management strategy for woody encroachment that confronts underlying
-        # risks and weaknesses before problems arise.
-        # <br>
-        # <br>
-        # These reports support an integrated framework for reducing grassland vulnerability to woody plant encroachment, as outlined in <a href="https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">A
-        #   Guide
-        #   to Reducing Risk and Vulnerability to Woody Encroachment and Rangelands.</a>
-        # <br>
-        # <br>
-        # The rangeland vulnerability maps and time-series plots in these reports leverage the approach, depicted below, for mapping various stages of encroachment to better target management and reduce future vulnerability.
-        # <br>
-        # <br>
-        # <center><img src="./Assets/WLFW_Vulnerability.PNG" height="500px"></center>
-      '</div>
-    </div>
-  </div>
-</div>', sep = ''))
+# Header
+# <div style="margin-bottom:30px;">
+# </div>
+
+# htmltools::HTML(paste(
+#   '<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
+#   <div class="panel panel-default">
+#     <div class="panel-heading" role="tab" id="headingOne">
+#       <h4 class="panel-title">
+#         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+#           Vulnerability to Woody Encroachment State Map
+#         </a>
+#       </h4>
+#     </div>
+#     <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+#       <div class="panel-body"><img src="',
+#       ifelse(params$type == 'State', paste(params$main_dir, 'vuln.png', sep = ''), paste(sta_dir, 'vuln.png', sep = '')),
+#       '">
+#         <br>
+#         <br>',
+#         '<h4>More information about Rangeland Vulnerability to Woody Encroachment</h4>
+#         Woody encroachment has emerged as a global threat to grassland biomes and the people, plants and animals that depend on them. As a result of increasing exposure to woody seed sources, many rangelands have become increasingly vulnerable to
+#         woodland encroachment. With the advent of satellite-derived measures of tree cover and rangeland productivity, rangeland management is poised to adapt to a more proactive management strategy for woody encroachment that confronts underlying
+#         risks and weaknesses before problems arise.
+#         <br>
+#         <br>
+#         These reports support an integrated framework for reducing grassland vulnerability to woody plant encroachment, as outlined in <a href="https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">A
+#           Guide
+#           to Reducing Risk and Vulnerability to Woody Encroachment and Rangelands.</a>
+#         <br>
+#         <br>
+#         The rangeland vulnerability maps and time-series plots in these reports leverage the approach, depicted below, for mapping various stages of encroachment to better target management and reduce future vulnerability.
+#         <br>
+#         <br>
+#         <center><img src="./Assets/WLFW_Vulnerability.PNG" height="500px"></center>
+#       </div>
+#     </div>
+#   </div>
+# </div>', sep = ''))
 ```
 
 <div style="margin-bottom:30px;">
@@ -690,142 +696,8 @@ htmltools::HTML(paste(
       </div>
     </div>
   </div>
-</div>
-
-
-<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingOne">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-          Calculating Rangeland Productivity Losses to Woody Encroachment
-        </a>
-      </h4>
-    </div>
-    <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
-      <div class="panel-body">
-      The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries.
-          <br>
-          <br>
-          Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes productivity losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
-          <br>
-          <br>
-          Productivity is the most fundamental and important metric in rangelands and measuring losses in productivity to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
-          <br>
-          <br>
-          The production loss statistics and figures presented in these reports are derived from the analysis in <a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below.
-          <br>
-          <br>
-          <center><img src="../Assets/YieldGap.png" width="600"></center>
-      </div>
-    </div>
-  </div>
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingTwo">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-          Calculating Tree Cover Change
-        </a>
-      </h4>
-    </div>
-    <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
-      <div class="panel-body">
-         Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href = "https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
-      </div>
-    </div>
-  </div>
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingThree">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-        Analysis Area Summary Statistics
-        </a>
-      </h4>
-    </div>
-    <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
-      <div class="panel-body">
-        These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for:
-        <br>
-        <ul>
-        <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
-        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers.</li>
-        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingFour">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-          Additional Information and Resources
-        </a>
-      </h4>
-    </div>
-    <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
-      <div class="panel-body">
-      <ul>
-      <li><a href = "https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree" target="_blank">View tree cover data in the Rangeland Analysis Platform web application. </a></li>
-      <li><a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
-      <li><a href = "https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage woody encroachment and reduce the risk and vulnerability to rangeland production. </a></li>
-      <li>Learn more about the NRCS Working Lands for Wildlife strategy on Woodland Expansion in the <a href = "https://wlfw.rangelands.app/great-plains/woodland-expansion/" target="_blank">Great Plains</a> and <a href = "https://wlfw.rangelands.app/sagebrush/woodland-expansion/" target="_blank">Sagebrush biomes. </a></li>
-      </ul>
-      </div>
-    </div>
-  </div>
 </div>',
 sep = ''))
-
-  # Additional panels
-  #<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="false">
-  # <div class="panel panel-default">
-  #   <div class="panel-heading" role="tab" id="headingOne">
-  #     <h4 class="panel-title">
-  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-  #         Annual data table
-  #       </a>
-  #     </h4>
-  #   </div>
-  #   <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
-  #     <div class="panel-body">
-  #       <object type="text/html" data="./data.html" width=800 height=975></object>
-  #       <br>
-  #       <p><a href="data.csv">Download data table as CSV</a></p>
-  #     </div>
-  #   </div>
-  # </div>
-  # <div class="panel panel-default">
-  #   <div class="panel-heading" role="tab" id="headingTwo">
-  #     <h4 class="panel-title">
-  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-  #         Herbaceous production plot
-  #       </a>
-  #     </h4>
-  #   </div>
-  #   <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
-  #     <div class="panel-body">
-  #       <img src="',
-  #       paste(params$main_dir, 'production.png', sep = ''),
-  #       '">
-  #     </div>
-  #   </div>
-  # </div>
-  # <div class="panel panel-default">
-  #   <div class="panel-heading" role="tab" id="headingThree">
-  #     <h4 class="panel-title">
-  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-  #         Tree cover plot
-  #       </a>
-  #     </h4>
-  #   </div>
-  #   <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
-  #     <div class="panel-body">
-  #       <img src="',
-  #       paste(params$main_dir, 'tree.png', sep = ''),
-  #     '">
-  #     </div>
-  #   </div>
-  # </div>
 
 ```
 
