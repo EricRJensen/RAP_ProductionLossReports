@@ -1,5 +1,5 @@
 ---
-title: "Rangeland Productivity Lost to Woody Encroachment"
+title: "Rangeland Production Lost to Woody Encroachment"
 output: html_document
 ---
 
@@ -70,7 +70,6 @@ library(leaflet.extras)
 library(htmlwidgets)
 library(htmltools)
 library(bsplus)
-library(tufte)
 library(leafem)
 library(scales)
 library(patchwork)
@@ -79,69 +78,99 @@ library(kableExtra)
 ```
 
 ```{r echo = FALSE, warning = FALSE}
-htmltools::HTML(paste('<div class="container">
+htmltools::HTML(
+  paste(
+    '<div class="container">
                           <img src = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/Banner_crop.jpg" height = "200px" style = "opacity: 0.7">
                           <div class="header-title">
-                          Rangeland Productivity Lost to<br>Woody Encroachment
+                          Rangeland Production Lost to<br>Woody Encroachment
                           </div>
-                       </div>', sep = ''))
+                       </div>',
+    sep = ''
+  )
+)
 ```
 
-> *"Woodland expansion takes rangeland out of agricultural production and displaces rangeland wildlife. Scattered trees in grassland ecosystems may look harmless to a casual observer, but the expansion of woody plants erodes resilience and increases
-risk to wildlife and producers."*
->
-> `r tufte::quote_footer('--- Great Plains Framework for Conservation Action')`
+## About these Reports
+Vegetation production is the most fundamental and important ecosystem service that rangelands provide, but woody encroachment is resulting in significantly diminished vegetation production in many locations. These reports build upon advances in remote sensing and vegetation modeling to provide state- and county-level estimates of the amount of rangeland production (lbs/acre) lost to woody encroachment. 
 
-Click on a state below to access these reports.
+Use the interactive map below to navigate to any of the 17 states and 1,062 counties for which we have generated reports. Learn more about the science and analysis behind these reports in the [Supplemental Information section](#supporting-information), below.
+
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE}
 
 # --------- Dataframe for mapping -------------
-options(scipen=999)
+options(scipen = 999)
 
 # Read-in and filter data
 # Read in production csv and filter for county of interest
-ctys_df <- read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20211218.csv') %>%
-  mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),#FIPS code
-         biomass = biomass / 2000,
-         yieldgap = yieldgap / 2000,
-         classIntact = (analysisArea - (classWoodlands + classModCover + classLowCover + classAtRisk)) * 0.000247105,
-         classWoodlands = classWoodlands * 0.000247105,
-         classModCover = classModCover * 0.000247105,
-         classLowCover = classLowCover * 0.000247105,
-         classAtRisk = classAtRisk * 0.000247105,
-         countyArea = countyArea * 0.000247105,
-         analysisArea = analysisArea * 0.000247105,
-         treeArea = treeArea * 0.000247105,
-         treedArea = treedArea * 0.000247105) %>%
-  left_join(read_csv('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/BPS_ForestedArea_Exported_20211029.csv') %>%
-              mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = ''),
-                     BPS_Forest = BPS_Forest * 0.000247105) %>%
-              select(-c(STATEFP, COUNTYFP, NAME)), by = "COUNTYID")
+ctys_df <-
+  read_csv(
+    'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Agricultural_Statistics_County_Exported_20211218.csv'
+  ) %>%
+  mutate(
+    COUNTYID = paste(STATEFP, COUNTYFP, sep = ''),
+    #FIPS code
+    biomass = biomass / 2000,
+    yieldgap = yieldgap / 2000,
+    classIntact = (
+      analysisArea - (classWoodlands + classModCover + classLowCover + classAtRisk)
+    ) * 0.000247105,
+    classWoodlands = classWoodlands * 0.000247105,
+    classModCover = classModCover * 0.000247105,
+    classLowCover = classLowCover * 0.000247105,
+    classAtRisk = classAtRisk * 0.000247105,
+    countyArea = countyArea * 0.000247105,
+    analysisArea = analysisArea * 0.000247105,
+    treeArea = treeArea * 0.000247105,
+    treedArea = treedArea * 0.000247105
+  ) %>%
+  left_join(
+    read_csv(
+      'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/BPS_ForestedArea_Exported_20211029.csv'
+    ) %>%
+      mutate(
+        COUNTYID = paste(STATEFP, COUNTYFP, sep = ''),
+        BPS_Forest = BPS_Forest * 0.000247105
+      ) %>%
+      dplyr::select(-c(STATEFP, COUNTYFP, NAME)),
+    by = "COUNTYID"
+  )
 
 # Projection string
-wkt <- 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
+wkt <-
+  'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
 
 # Read in SF objects for states and counties
-ctys_sf <- st_read('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/shp/tl_2020_us_county_westwide/tl_2020_us_county.shp', quiet = TRUE) %>%
-  mutate(COUNTYID = paste(STATEFP,COUNTYFP, sep = '')) %>% #FIPS code
+ctys_sf <-
+  st_read(
+    'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/shp/tl_2020_us_county_westwide/tl_2020_us_county.shp',
+    quiet = TRUE
+  ) %>%
+  mutate(COUNTYID = paste(STATEFP, COUNTYFP, sep = '')) %>% #FIPS code
   st_transform(wkt)
 
 # Generate state boundaries from the union of coutnies in the state to ensure topological consistency
-dissolve_sta <- function(FIPS){
+dissolve_sta <- function(FIPS) {
   ctys_sf %>%
     dplyr::select(STATEFP) %>%
-    filter(STATEFP == FIPS) %>% 
+    filter(STATEFP == FIPS) %>%
     st_union() %>%
     st_as_sf(crs = wkt) %>%
     mutate(STATEFP = FIPS)
 }
-state_fp_v <- ctys_sf$STATEFP %>% 
-  unique() %>% 
-  unlist() 
-stas_sf <- map(state_fp_v, dissolve_sta) %>% 
+state_fp_v <- ctys_sf$STATEFP %>%
+  unique() %>%
+  unlist()
+stas_sf <- map(state_fp_v, dissolve_sta) %>%
   bind_rows() %>%
-  left_join(st_read('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp', quiet = TRUE) %>% st_drop_geometry(), by = 'STATEFP') %>%
+  left_join(
+    st_read(
+      'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/shp/tl_2020_us_state/tl_2020_us_state.shp',
+      quiet = TRUE
+    ) %>% st_drop_geometry(),
+    by = 'STATEFP'
+  ) %>%
   mutate(path = paste('./', str_replace_all(NAME, ' ', ''), '/index.html', sep = ''))
 
 # Loop over countys dataframe to produce vector of FIPS codes strings
@@ -150,19 +179,20 @@ ctys_fp_v <- c()
 ctys_fp_df <- ctys_df %>%
   dplyr::select(c('STATEFP', 'COUNTYFP')) %>%
   unique()
-for(i in 1:nrow(ctys_fp_df)){ #1:nrow(ctys_fp_df)
-  sta_fp <- ctys_fp_df[i,1] %>% unlist()
-  cty_fp <- ctys_fp_df[i,2] %>% unlist()
+for (i in 1:nrow(ctys_fp_df)) {
+  #1:nrow(ctys_fp_df)
+  sta_fp <- ctys_fp_df[i, 1] %>% unlist()
+  cty_fp <- ctys_fp_df[i, 2] %>% unlist()
   cty_id <- paste(sta_fp, cty_fp, sep = '')
   ctys_fp_v <- c(ctys_fp_v, cty_id)
-  stas_fp_v <- c(stas_fp_v, sta_fp) %>%unique()
+  stas_fp_v <- c(stas_fp_v, sta_fp) %>% unique()
 }
 
 # Filter states to those in the RAP geography
 stas_sf <- stas_sf %>%
   filter(STATEFP %in% stas_fp_v)
 
-# Get current year to pass to the rmarkdown script as a parameter 
+# Get current year to pass to the rmarkdown script as a parameter
 current_year = max(ctys_df$year)
 
 # Counties yield gap dataframe to join back to the counties SF object for visualizing in the map
@@ -173,14 +203,21 @@ ctys_yieldgap_df <- ctys_df %>%
   filter(year == current_year) %>%
   mutate(yieldgap_2019_norm_area = yieldgap / analysisArea) %>%
   ungroup() %>%
-  dplyr::select(c(FIPS = COUNTYID, analysisArea, yieldgap_2019 = yieldgap, yieldgap_cumulative))
+  dplyr::select(c(
+    FIPS = COUNTYID,
+    analysisArea,
+    yieldgap_2019 = yieldgap,
+    yieldgap_cumulative
+  ))
 
-# Generate new columns and translate data for plotting 
-ctys_df_yg2019 <- ctys_df %>% 
+# Generate new columns and translate data for plotting
+ctys_df_yg2019 <- ctys_df %>%
   filter(year == 2019) %>%
-  mutate(FIPS = paste(STATEFP,COUNTYFP, sep = ''),
-         yieldgap_2019_norm = yieldgap / (yieldgap + biomass)*100,
-         pct_for = BPS_Forest / analysisArea) %>%
+  mutate(
+    FIPS = paste(STATEFP, COUNTYFP, sep = ''),
+    yieldgap_2019_norm = yieldgap / (yieldgap + biomass) * 100,
+    pct_for = BPS_Forest / countyArea
+  ) %>%
   dplyr::select(c(FIPS, pct_for, yieldgap_2019_norm))
 
 # Join counties yield gap data back to counties sf object and subset to 2019
@@ -188,27 +225,30 @@ ctys_sf <- ctys_sf %>%
   rename(FIPS = GEOID) %>%
   right_join(ctys_yieldgap_df, by = 'FIPS') %>%
   dplyr::select(c(FIPS, NAMELSAD, yieldgap_2019)) %>%
-  left_join(ctys_df_yg2019, by = 'FIPS') 
+  left_join(ctys_df_yg2019, by = 'FIPS')
 
 # Calculate states yield gap statistics for generating labels on leaflet map
-calc_states <- function(FIP){
+calc_states <- function(FIP) {
   ctys_df %>%
-      filter(STATEFP == FIP) %>%
-      group_by(year) %>%
-      mutate(biomass = sum(biomass),
-             yieldgap = sum(yieldgap),
-             analysisArea = sum(analysisArea)) %>%
-      ungroup() %>%
-      filter(year == 2019) %>%
-      mutate(yieldgap_2019_norm = yieldgap / (yieldgap + biomass)*100) %>% 
-      dplyr::select(STATEFP, yieldgap_2019 = yieldgap, yieldgap_2019_norm, biomass) %>%
-      unique()  }
+    filter(STATEFP == FIP) %>%
+    group_by(year) %>%
+    mutate(
+      biomass = sum(biomass),
+      yieldgap = sum(yieldgap),
+      analysisArea = sum(analysisArea)
+    ) %>%
+    ungroup() %>%
+    filter(year == 2019) %>%
+    mutate(yieldgap_2019_norm = yieldgap / (yieldgap + biomass) * 100) %>%
+    dplyr::select(STATEFP, yieldgap_2019 = yieldgap, yieldgap_2019_norm, biomass) %>%
+    unique()
+}
 stas_df <- map(stas_fp_v, calc_states) %>% bind_rows()
 
 # Join states yield gap statistics to states SF object
 stas_sf <- left_join(stas_sf, stas_df, by = 'STATEFP')
 
-# dataframe for western US 
+# dataframe for western US
 main_df <- ctys_df %>%
   group_by(year) %>%
   mutate(classWoodlands = sum(classWoodlands)) %>%
@@ -223,57 +263,151 @@ main_df <- ctys_df %>%
   mutate(treeCover = (treeArea / analysisArea) * 100) %>%
   mutate(biomass = sum(biomass)) %>%
   mutate(yieldgap = sum(yieldgap)) %>%
-  select(-c(STATEFP, COUNTYFP, COUNTYID, NAME, countyArea, BPS_Forest)) %>% 
+  dplyr::select(-c(STATEFP, COUNTYFP, COUNTYID, NAME, countyArea, BPS_Forest)) %>%
   ungroup() %>%
   unique() %>%
-    mutate(cumYieldGap = cumsum(yieldgap))
+  mutate(cumYieldGap = cumsum(yieldgap))
 
 # Current year integer
 current_year <- max(main_df$year)
 
 # Remove interim data objects
-remove(ctys_yieldgap_df, stas_fp_v, sta_fp, cty_fp, cty_id, i, ctys_fp_df, wkt, dissolve_sta, ctys_df_yg2019, ctys_fp_v, state_fp_v, calc_states, stas_df)
+remove(
+  ctys_yieldgap_df,
+  stas_fp_v,
+  sta_fp,
+  cty_fp,
+  cty_id,
+  i,
+  ctys_fp_df,
+  wkt,
+  dissolve_sta,
+  ctys_df_yg2019,
+  ctys_fp_v,
+  state_fp_v,
+  calc_states,
+  stas_df
+)
+
+# Select attributes for CSV file
+main_df_csv <- main_df %>%
+  mutate(name = "Westwide") %>%
+  dplyr::select(
+    c(
+      name,
+      year,
+      totalArea = westwideArea,
+      analysisArea,
+      biomass,
+      yieldGap = yieldgap,
+      cumYieldGap,
+      treeCover,
+      treeArea,
+      classWoodlands,
+      classModCover,
+      classLowCover,
+      classAtRisk,
+      classIntact
+    )
+  ) %>%
+  unique()
+
+write_csv(main_df_csv, file = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/data.csv")
 ```
 
 
-# Westwide Productivity Lost to Woody Encroachment
+## Westwide Rangeland Production Lost to Woody Encroachment
 ```{r echo = FALSE, warning = FALSE}
 main_df_rec <- main_df %>%
-  filter(year == current_year) 
+  filter(year == current_year)
 
-htmltools::HTML(paste(
-  '<span class="table-span">
+htmltools::HTML(
+  paste(
+    '<span class="table-span">
     <table class="table-main">
       <thead>
         <tr>',
-      ifelse(-main_df_rec$yieldgap < 0,
-          paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          'Productivity lost to woody encroachment in ', current_year, '</h2></th></center>',
-      ifelse(sum(-main_df$yieldgap) < 0,
-          paste('<th style="background-color:#FF000088; border: 3px solid black"><center>', sep = ''), paste('<th style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          'Cumulative productivity lost to woody encroachment (1990-', current_year, ')</th></center>
+    ifelse(
+      -main_df_rec$yieldgap < 0,
+      paste(
+        '<th style="background-color:#FF000088; border: 3px solid black"><center>',
+        sep = ''
+      ),
+      paste(
+        '<th style="background-color:#FFFFFF; border: 3px solid black"><center>',
+        sep = ''
+      )
+    ),
+    'Production lost to woody encroachment in ',
+    current_year,
+    '</h2></th></center>',
+    ifelse(
+      sum(-main_df$yieldgap) < 0,
+      paste(
+        '<th style="background-color:#FF000088; border: 3px solid black"><center>',
+        sep = ''
+      ),
+      paste(
+        '<th style="background-color:#FFFFFF; border: 3px solid black"><center>',
+        sep = ''
+      )
+    ),
+    'Cumulative production lost to woody encroachment (1990-',
+    current_year,
+    ')</th></center>
         </tr>
       </thead>
       <tbody>
         <tr>',
-      ifelse(main_df_rec$yieldgap > 0,
-          paste('<td style="background-color:#FF000044; border: 3px solid black"><center>', sep = ''), paste('<td style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          ifelse(main_df_rec$yieldgap > 0, paste(format(round(main_df_rec$yieldgap,0), big.mark = ','), ' tons', sep = ''), paste('No losses')),
-          '</td></center>',
-        ifelse(sum(main_df$yieldgap) > 0,
-          paste('<td style="background-color:#FF000044; border: 3px solid black"><center>', sep = ''), paste('<td style="background-color:#FFFFFF; border: 3px solid black"><center>', sep = '')),
-          ifelse(sum(main_df$yieldgap) > 0,
-                 paste(format(round(sum(main_df$yieldgap),0), big.mark = ','), ' tons', sep = ''), paste('No losses')),
-          '</td></center>
+    ifelse(
+      main_df_rec$yieldgap > 0,
+      paste(
+        '<td style="background-color:#FF000044; border: 3px solid black"><center>',
+        sep = ''
+      ),
+      paste(
+        '<td style="background-color:#FFFFFF; border: 3px solid black"><center>',
+        sep = ''
+      )
+    ),
+    ifelse(
+      main_df_rec$yieldgap > 0,
+      paste(format(
+        round(main_df_rec$yieldgap, 0), big.mark = ','
+      ), ' tons', sep = ''),
+      paste('No losses')
+    ),
+    '</td></center>',
+    ifelse(
+      sum(main_df$yieldgap) > 0,
+      paste(
+        '<td style="background-color:#FF000044; border: 3px solid black"><center>',
+        sep = ''
+      ),
+      paste(
+        '<td style="background-color:#FFFFFF; border: 3px solid black"><center>',
+        sep = ''
+      )
+    ),
+    ifelse(
+      sum(main_df$yieldgap) > 0,
+      paste(format(round(
+        sum(main_df$yieldgap), 0
+      ), big.mark = ','), ' tons', sep = ''),
+      paste('No losses')
+    ),
+    '</td></center>
         </tr>
       </tbody>
     </table>
   </span>',
-sep = ''))
+  sep = ''
+  )
+)
 ```
 
 
-### Productivity Losses Map
+### Rangeland Production Losses Map
 Click any state on the map below to access its report.
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.cap = 'The map depicts rangeland production losses for the year 2019 that resulted from increases in tree cover since 1990. The colors show percent losses relative to production that would have been acheived without increases in tree cover. Counties estimated to have had significant amounts of forest prior to Euro-American settlement are masked in grey to focus attention on historical grasslands and shrublands.', fig.width = 9.5}
 
@@ -282,103 +416,180 @@ Click any state on the map below to access its report.
 sta_paths <- stas_sf$path
 
 # Concatenate the Javascript string by looping over each county feature in the state
-jsOnClick_srt <- paste('
+jsOnClick_srt <- paste(
+  '
   function(el, x) {
-    var marker = document.getElementsByClassName("leaflet-interactive");')
+    var marker = document.getElementsByClassName("leaflet-interactive");'
+)
 
 jsOnClick_mid <- as.character('')
-for(i in 1:length(sta_paths)){
+for (i in 1:length(sta_paths)) {
   url = sta_paths[i]
-  i_js = i -1
-  js_str <- paste('marker[', i_js, '].onclick=function(){window.open(\"', url, '\", \"_self\");};', sep = '')
+  i_js = i - 1
+  js_str <-
+    paste(
+      'marker[',
+      i_js,
+      '].onclick=function(){window.open(\"',
+      url,
+      '\", \"_self\");};',
+      sep = ''
+    )
   jsOnClick_mid <- paste(jsOnClick_mid, js_str)
 }
 
 jsOnClick_end <- '}'
 
-jsOnClick <- paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
+jsOnClick <-
+  paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
 
-rm(i, i_js, js_str, jsOnClick_end, jsOnClick_mid, jsOnClick_srt, sta_paths, url)
+rm(i,
+   i_js,
+   js_str,
+   jsOnClick_end,
+   jsOnClick_mid,
+   jsOnClick_srt,
+   sta_paths,
+   url)
 
 # --------- Interactive map -------------
 
 # Separate forested from non forested counties using LANDFIRE BPS data
-forestThreshold = 0.5
+forestThreshold = .55
 forest_ctys_sf <- filter(ctys_sf, pct_for > forestThreshold) %>%
   st_transform(4326)
 nonFor_ctys_sf <- filter(ctys_sf, pct_for < forestThreshold) %>%
   st_transform(4326)
 
 # Define color ramp -- adjusting bias factor to bias more colors for higher values and stretch color ramp to non-forest counties
-rampcols<- colorRampPalette(c("#ffffff","#fed976","#feb24c","#fd8d3c","#fc4e2a","#e31a1c","#b10026"), space = "Lab", bias = 2)(max(nonFor_ctys_sf$yieldgap_2019_norm)*1000)
-pal <- colorNumeric(rampcols, domain = c(0, max(nonFor_ctys_sf$yieldgap_2019_norm)), na.color = '#ffffff')
+rampcols <-
+  colorRampPalette(
+    c(
+      "#ffffff",
+      "#fed976",
+      "#feb24c",
+      "#fd8d3c",
+      "#fc4e2a",
+      "#e31a1c",
+      "#b10026"
+    ),
+    space = "Lab",
+    bias = 2
+  )(max(nonFor_ctys_sf$yieldgap_2019_norm, na.rm = TRUE) * 1000)
+
+pal <-
+  colorNumeric(rampcols, domain = c(0, max(
+    nonFor_ctys_sf$yieldgap_2019_norm, na.rm = TRUE
+  )), na.color = '#ffffff')
 
 # Function to generate state labels
 labs <- lapply(seq(nrow(stas_sf)), function(i) {
-  lab<- paste0('<b>', stas_sf[i, "NAME"], '</b><br>',
-               paste(as.character(format(round(as.numeric(stas_sf[i, "yieldgap_2019"]), 0), big.mark = ',')), ' tons (', round(as.numeric(stas_sf[i, "yieldgap_2019_norm"]), 1), '%) production loss in 2019<br>', sep = ''))
-  lab[1]})
+  lab <- paste0(
+    '<b>',
+    stas_sf[i, "NAME"],
+    '</b><br>',
+    paste(
+      as.character(format(round(
+        as.numeric(stas_sf[i, "yieldgap_2019"]), 0
+      ), big.mark = ',')),
+      ' tons (',
+      round(as.numeric(stas_sf[i, "yieldgap_2019_norm"]), 1),
+      '%) production lost in 2019<br>',
+      sep = ''
+    )
+  )
+  lab[1]
+})
 
 rm(rampcols, forestThreshold)
 
 # Leaflet map
-leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5, dragging = FALSE, attributionControl=FALSE)) %>%
+leaflet(
+  options = leafletOptions(
+    zoomControl = FALSE,
+    minZoom = 5,
+    maxZoom = 5,
+    dragging = FALSE,
+    attributionControl = FALSE
+  )
+) %>%
   # Control order of layer rendering
   addMapPane("labs", zIndex = 490) %>%
-  addMapPane("mask_polys", zIndex = 410) %>% 
-  addMapPane("for_polys", zIndex = 420) %>% 
-  addMapPane("nonFor_polys", zIndex = 430) %>% 
+  addMapPane("mask_polys", zIndex = 410) %>%
+  addMapPane("for_polys", zIndex = 420) %>%
+  addMapPane("nonFor_polys", zIndex = 430) %>%
   # State labels and on-click objects
-  addPolygons(data = stas_sf,
-             fillColor = '#FFFFFFFF',
-             color = '#424242',
-             fillOpacity = 0,
-             opacity = 1,
-             weight = 2,
-             smoothFactor = 0.5,
-             label = lapply(labs, htmltools::HTML),
-             options = pathOptions(pane = "labs"),
-             labelOptions = labelOptions(style = list(
-               "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
-               "font-size" = "13px",
-               "margin" = "0px"))) %>%
+  addPolygons(
+    data = stas_sf,
+    fillColor = '#FFFFFFFF',
+    color = '#424242',
+    fillOpacity = 0,
+    opacity = 1,
+    weight = 2,
+    smoothFactor = 0.5,
+    label = lapply(labs, htmltools::HTML),
+    options = pathOptions(pane = "labs"),
+    labelOptions = labelOptions(
+      style = list(
+        "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+        "font-size" = "13px",
+        "margin" = "0px"
+      )
+    )
+  ) %>%
   # Forest mask
-  addPolygons(data = forest_ctys_sf,
-              fillColor = 'grey',
-              fillOpacity = 0.85,
-              color = '#929292',
-              smoothFactor = 0.5,
-              options = pathOptions(pane = "mask_polys"))%>%
+  addPolygons(
+    data = forest_ctys_sf,
+    fillColor = 'grey',
+    fillOpacity = 0.85,
+    color = '#929292',
+    smoothFactor = 0.5,
+    options = pathOptions(pane = "mask_polys")
+  ) %>%
   # County choropleths, forested
-  addPolygons(data = forest_ctys_sf,
-              fillColor = ~pal(yieldgap_2019_norm),
-              color = '#929292',
-              weight = 1,
-              opacity = 1,
-              fillOpacity = .4,
-              smoothFactor = 0.5,
-              options = pathOptions(pane = "for_polys")) %>%
+  addPolygons(
+    data = forest_ctys_sf,
+    fillColor = ~ pal(yieldgap_2019_norm),
+    color = '#929292',
+    weight = 1,
+    opacity = 1,
+    fillOpacity = .4,
+    smoothFactor = 0.5,
+    options = pathOptions(pane = "for_polys")
+  ) %>%
   # County choropleths, non-forested
-  addPolygons(data = nonFor_ctys_sf,
-              fillColor = ~pal(yieldgap_2019_norm),
-              color = '#929292',
-              weight = 1,
-              opacity = 1,
-              fillOpacity = 0.85,
-              smoothFactor = 0.5,
-              options = pathOptions(pane = "nonFor_polys")) %>%
+  addPolygons(
+    data = nonFor_ctys_sf,
+    fillColor = ~ pal(yieldgap_2019_norm),
+    color = '#929292',
+    weight = 1,
+    opacity = 1,
+    fillOpacity = 0.85,
+    smoothFactor = 0.5,
+    options = pathOptions(pane = "nonFor_polys")
+  ) %>%
   addLegend(
-          position = "bottomleft", pal = pal, values = sort(nonFor_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
-          title = "Production<br>loss in 2019",
-          labFormat = labelFormat(suffix = '%'),
-          opacity = .8,
-          na.label = '') %>%
+    title = "Masked areas",
+    position = "bottomright",
+    colors = c('grey'),
+    labels = c("Primarily forest or crop")
+  ) %>%
+  addLegend(
+    position = "bottomleft",
+    pal = pal,
+    values = sort(nonFor_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
+    title = "Production<br>losses in 2019",
+    labFormat = labelFormat(suffix = '%'),
+    opacity = .8,
+    na.label = ''
+  ) %>%
   # Basemap
   addProviderTiles(providers$Esri.WorldTerrain) %>%
   # On-click JS
-  htmlwidgets::onRender(jsOnClick) %>% 
+  htmlwidgets::onRender(jsOnClick) %>%
   # Clean-up tile gap typical of Leaflet
-  htmlwidgets::onRender("(function(){
+  htmlwidgets::onRender(
+    "(function(){
   var originalInitTile = L.GridLayer.prototype._initTile
   L.GridLayer.include({
       _initTile: function (tile) {
@@ -388,38 +599,77 @@ leaflet(options = leafletOptions(zoomControl = FALSE,  minZoom = 5, maxZoom = 5,
           tile.style.height = tileSize.y + 1 + 'px';
       }
   });
-})()")
+})()"
+  )
 ```
 
 
 <div style="margin-bottom:30px;">
 </div>
 
-### Productivity Losses Plots
-*The plots below depict herbaceous production gains and losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(current_year)`. The annual plot displays the same information as the map above.*
+### Rangeland Production Losses Plots
+*The plots below depict herbaceous production losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(current_year)`. The annual plot displays the same information as the map above. In instances where tree cover has declined, rangeland production may increase.*
 ```{r echo = FALSE, fig.height=5}
-annYG_plot <- ggplot()+
-  geom_line(main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 1)+
-  geom_point(main_df, mapping = aes(x = year, y = -yieldgap), color = 'red', size = 2)+
-  geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey30', size = 1)+
-  labs(title = 'Annual herbaceous production gains/losses', y = 'Production gains/losses (tons)')+
-  coord_cartesian(ylim = c(-(max(abs(main_df$yieldgap)))*1.1,(max(abs(main_df$yieldgap)))*1.1))+
-  scale_y_continuous(labels = comma)+
+annYG_plot <- ggplot() +
+  geom_line(
+    main_df,
+    mapping = aes(x = year, y = -yieldgap),
+    color = 'red',
+    size = 1
+  ) +
+  geom_point(
+    main_df,
+    mapping = aes(x = year, y = -yieldgap),
+    color = 'red',
+    size = 2
+  ) +
+  geom_hline(
+    yintercept = 0,
+    linetype = 'dashed',
+    color = 'grey30',
+    size = 1
+  ) +
+  labs(title = 'Annual rangeland production losses', y = 'Rangeland production change (tons)') +
+  coord_cartesian(ylim = c(-(max(
+    abs(main_df$yieldgap)
+  )) * 1.1, (max(
+    abs(main_df$yieldgap)
+  )) * 1.1)) +
+  scale_y_continuous(labels = comma) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  theme_minimal()+
-  theme(axis.title.x=element_blank(),
+  theme_minimal() +
+  theme(axis.title.x = element_blank(),
         plot.title.position = "plot")
 
-cumYG_plot <- ggplot()+
-  geom_line(main_df, mapping = aes(x = year, y = -cumYieldGap), color = 'red', size = 1)+
-  geom_point(main_df, mapping = aes(x = year, y = -cumYieldGap), color = 'red', size = 2)+
-  geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey30', size = 1)+
-  labs(title = 'Cumulative herbaceous production gains/losses', y = 'Production gains/losses (tons)')+
-  coord_cartesian(ylim = c((-max(abs(main_df$cumYieldGap)))*1.1,(max(abs(main_df$cumYieldGap)))*1.1))+
-  scale_y_continuous(labels = comma)+
+cumYG_plot <- ggplot() +
+  geom_line(
+    main_df,
+    mapping = aes(x = year, y = -cumYieldGap),
+    color = 'red',
+    size = 1
+  ) +
+  geom_point(
+    main_df,
+    mapping = aes(x = year, y = -cumYieldGap),
+    color = 'red',
+    size = 2
+  ) +
+  geom_hline(
+    yintercept = 0,
+    linetype = 'dashed',
+    color = 'grey30',
+    size = 1
+  ) +
+  labs(title = 'Cumulative rangeland production losses', y = 'Rangeland production change (tons)') +
+  coord_cartesian(ylim = c((-max(
+    abs(main_df$cumYieldGap)
+  )) * 1.1, (max(
+    abs(main_df$cumYieldGap)
+  )) * 1.1)) +
+  scale_y_continuous(labels = comma) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
-  theme_minimal()+
-  theme(axis.title.x=element_blank(),
+  theme_minimal() +
+  theme(axis.title.x = element_blank(),
         plot.title.position = "plot")
 
 (annYG_plot | cumYG_plot)
@@ -427,37 +677,60 @@ cumYG_plot <- ggplot()+
 
 |
 |
-### Productivity and Tree Cover Summary
+### Rangeland Production and Tree Cover Summary
 ```{r echo = FALSE, warning = FALSE}
 # Statistics table for report
 stat_df <- tibble(init = 10)
-stat_df[, paste('Rangeland production in', as.character(current_year))] = paste(as.character(round(main_df_rec$biomass,0)), 'tons')
-prodChangeCum <- -round(main_df_rec$yieldgap,0)
-prodChangePct <- -round(main_df_rec$yieldgap / (main_df_rec$yieldgap + main_df_rec$biomass)*100,2)
-stat_df[, paste('Rangeland production losses in', as.character(current_year))] <- ifelse(prodChangeCum >= 0, paste('No losses'), paste(as.character(-prodChangeCum), ' tons (', -prodChangePct, '%)', sep = ''))
-prodChangeCur <- -round(sum(main_df$yieldgap),0)
-stat_df[, paste('Cumulative rangeland production losses since 1990')] <- ifelse(prodChangeCur >= 0, paste('No losses'), paste(as.character(-prodChangeCur), ' tons', sep = '')) 
-stat_df[, paste('Tree cover in', as.character(current_year))] <- paste(as.character(round(main_df_rec$treeArea,0)), 'acres')
-treeAreaChange <- round((tail(main_df$treeArea, n = 1)) - (head(main_df$treeArea, n = 1)), 0)
-stat_df[, paste('Tree cover change since 1990')] <- ifelse(treeAreaChange >= 0, paste('+', as.character(treeAreaChange), ' acres', sep = ''), paste('-', as.character(treeAreaChange), ' acres', sep = ''))
-stat_df[, paste('Tree cover percent in', as.character(current_year))] <- paste(as.character(round(main_df_rec$treeCover,2)),'%', sep = '')
-treePctChange <- round((tail(main_df$treeCover, n = 1)) - (head(main_df$treeCover, n = 1)), 2)
-stat_df[, paste('Tree cover percent change since 1990')] <- ifelse(treePctChange >= 0, paste('+', as.character(treePctChange), '%', sep = ''), paste(as.character(treePctChange), '%', sep = ''))
+stat_df[, paste('Rangeland production in', as.character(current_year))] = paste(as.character(round(main_df_rec$biomass, 0)), 'tons')
+prodChangeCum <- -round(main_df_rec$yieldgap, 0)
+prodChangePct <-
+  -round(main_df_rec$yieldgap / (main_df_rec$yieldgap + main_df_rec$biomass) *
+           100,
+         2)
+stat_df[, paste('Rangeland production losses in', as.character(current_year))] <-
+  ifelse(
+    prodChangeCum >= 0,
+    paste('No losses'),
+    paste(
+      as.character(-prodChangeCum),
+      ' tons (',-prodChangePct,
+      '%)',
+      sep = ''
+    )
+  )
+prodChangeCur <- -round(sum(main_df$yieldgap), 0)
+stat_df[, paste('Cumulative rangeland production losses since 1990')] <-
+  ifelse(prodChangeCur >= 0,
+         paste('No losses'),
+         paste(as.character(-prodChangeCur), ' tons', sep = ''))
+stat_df[, paste('Tree cover in', as.character(current_year))] <-
+  paste(as.character(round(main_df_rec$treeArea, 0)), 'acres')
+treeAreaChange <-
+  round((tail(main_df$treeArea, n = 1)) - (head(main_df$treeArea, n = 1)), 0)
+stat_df[, paste('Tree cover change since 1990')] <-
+  ifelse(
+    treeAreaChange >= 0,
+    paste('+', as.character(treeAreaChange), ' acres', sep = ''),
+    paste('-', as.character(treeAreaChange), ' acres', sep = '')
+  )
+stat_df[, paste('Tree cover percent in', as.character(current_year))] <-
+  paste(as.character(round(main_df_rec$treeCover, 2)), '%', sep = '')
 
-stat_df <- stat_df[,2:8]
+stat_df <- stat_df[, 2:7]
 
 stat_df <- stat_df %>%
   t() %>%
   melt() %>%
-  mutate(
-         Value = prettyNum(value, big.mark = ",")) %>%
+  mutate(Value = prettyNum(value, big.mark = ",")) %>%
   dplyr::select(c(Variable = Var1, Value))
 
 kable(stat_df, col.names = NULL) %>%
   column_spec(1, width = "15cm") %>%
   column_spec(2, width = "5cm") %>%
-  row_spec(1:6, hline_after = TRUE) %>%
+  row_spec(1:5, hline_after = TRUE) %>%
   kable_styling()
+
+HTML('<a href="./data.csv" target="_blank">Download the data table used to produce this report. </a>')
 ```
 
  
@@ -516,7 +789,7 @@ htmltools::HTML(paste('
     <div class="panel-heading" role="tab" id="headingOne">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-          Calculating Rangeland Productivity Losses to Woody Encroachment
+          Calculating Rangeland Rangeland Production Losses to Woody Encroachment
         </a>
       </h4>
     </div>
@@ -525,10 +798,10 @@ htmltools::HTML(paste('
       The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries. 
           <br>
           <br>
-          Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes productivity losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
+          Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes rangeland production losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
           <br>
           <br>
-          Productivity is the most fundamental and important metric in rangelands and measuring losses in productivity to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
+          Vegetation productivity is the most fundamental and important metric in rangelands and measuring losses in rangeland production to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
           <br>
           <br>
           The production loss statistics and figures presented in these reports are derived from the analysis in <a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below. 
@@ -584,6 +857,7 @@ htmltools::HTML(paste('
       <div class="panel-body">
       <ul>
       <li><a href = "https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree" target="_blank">View tree cover data in the Rangeland Analysis Platform web application. </a></li>
+      <li><a href="./data.csv" target="_blank">Download the data table used to produce this report. </a></li>
       <li><a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
       <li><a href = "https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage woody encroachment and reduce the risk and vulnerability to rangeland production. </a></li>
       <li>Learn more about the NRCS Working Lands for Wildlife strategy on Woodland Expansion in the <a href = "https://wlfw.rangelands.app/great-plains/woodland-expansion/" target="_blank">Great Plains</a> and <a href = "https://wlfw.rangelands.app/sagebrush/woodland-expansion/" target="_blank">Sagebrush biomes. </a></li>
