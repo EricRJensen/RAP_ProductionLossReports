@@ -11,10 +11,15 @@ params:
   current_year: params$current_year
   rap_url: params$rap_url
   main_dir: params$main_dir
+  aspect_factor: params$aspect_factor
   type: params$type
 output:
   html_document
 ---
+
+
+
+
 
 
 <style type="text/css">
@@ -25,6 +30,10 @@ body{ /* Normal  */
       font-family: 'Open Sans', sans-serif;
       color: #2b2b2b;
   }
+  
+ul{
+  margin-bottom:20px;
+}
 
 .table-span{
   display: inline-block;
@@ -56,6 +65,8 @@ table.table-main tbody td{
 
 .leaflet {
   z-index:3;
+  width: 100% !important;
+  margin-top:10px;
 }
 
 .header {
@@ -91,8 +102,6 @@ table.table-main tbody td{
   margin-top:175px;
 }
 
-
-
 </style>
 
 
@@ -111,6 +120,9 @@ library(htmltools)
 library(htmlwidgets)
 library(bsplus)
 library(tableHTML)
+# library(extrafont)
+# font_import('C:/Users/eric/Desktop/fonnnt/', prompt = FALSE)
+# loadfonts(device = "win")
 
 knitr::opts_chunk$set(echo = TRUE, root.dir = here())
 ```
@@ -355,6 +367,9 @@ jsOnClick_end <- '}'
 jsOnClick <-
   paste(jsOnClick_srt, jsOnClick_mid, jsOnClick_end, sep = '')
 
+# For responsive display
+
+
 
 # ---------- Mapping -----------
 
@@ -459,7 +474,12 @@ if (params$type == 'County') {
       labFormat = labelFormat(suffix = '%'),
       na.label = ''
     ) %>%
-    
+    addLegend(
+      title = "Masked areas",
+      position = "bottomleft",
+      colors = c('grey'),
+      labels = c("Primarily forest or crop")
+    ) %>%
     setMapWidgetStyle(list(background = "white")) %>%
     htmlwidgets::onRender(jsOnClick) %>%
     htmlwidgets::onRender(
@@ -476,7 +496,7 @@ if (params$type == 'County') {
                   }
               });
           })()"
-    )
+    ) 
   
 } else if (params$type == 'State') {
   leaflet(
@@ -561,6 +581,12 @@ if (params$type == 'County') {
       opacity = 1,
       na.label = ''
     ) %>%
+  addLegend(
+    title = "Masked areas",
+    position = "bottomleft",
+    colors = c('grey'),
+    labels = c("Primarily forest or crop")
+  ) %>%
     setMapWidgetStyle(list(background = "white")) %>%
     htmlwidgets::onRender(jsOnClick) %>%
     htmlwidgets::onRender(
@@ -577,7 +603,7 @@ if (params$type == 'County') {
                   }
               });
           })()"
-    )
+    ) 
 }
   
 ```
@@ -614,7 +640,8 @@ annYG_plot <- ggplot() +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_minimal() +
   theme(axis.title.x = element_blank(),
-        plot.title.position = "plot")
+        plot.title.position = "plot",
+        text=element_text(family='Open Sans'))
 
 # Dataframe to control y-axis scaling
 scale_df <- params$main_df %>%
@@ -667,7 +694,8 @@ cumYG_plot <- ggplot() +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_minimal() +
   theme(axis.title.x = element_blank(),
-        plot.title.position = "plot")
+        plot.title.position = "plot",
+        text=element_text(family='Open Sans'))
 
 # If else to control y-axis scaling for cumulative losses that are never greater than 0.5% in a given year
 if (max(scale_df$cumPctLossAbs) < 0.005) {
@@ -877,22 +905,22 @@ htmltools::HTML(
         <center><img src="../Assets/YieldGap.png" width="600"></center>
       </div>
     </div>
-  </div>
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingThree">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-          Calculating Tree Cover Change
-        </a>
-      </h4>
-    </div>
-    <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
-      <div class="panel-body">
-        Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href="https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
-      </div>
-    </div>
-  </div>
-  <div class="panel panel-default">
+  </div>',
+  # <div class="panel panel-default">
+  #   <div class="panel-heading" role="tab" id="headingThree">
+  #     <h4 class="panel-title">
+  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+  #         Calculating Tree Cover Change
+  #       </a>
+  #     </h4>
+  #   </div>
+  #   <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+  #     <div class="panel-body">
+  #       Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href="https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
+  #     </div>
+  #   </div>
+  # </div>
+  '<div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingFour">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
@@ -902,6 +930,7 @@ htmltools::HTML(
     </div>
     <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
       <div class="panel-body">
+      <h4><strong>Areas analyzed in these reports</h4></strong>
         <p>These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for:</p>
         <ul>
           <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
@@ -909,7 +938,27 @@ htmltools::HTML(
             (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers</li>
           <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
         </ul>
-        <object type="text/html" data="./poly_data.html" width=800 height=180></object>
+        <h4><strong>Analysis area summary for ',
+  paste(params$new_title),
+  ' </h4></strong>
+        <object type="text/html" data="./poly_data.html" width=800 height=145></object>
+                <h4><strong>Analysis area map for ',
+  paste(params$new_title),
+  ' </h4></strong>
+        <img src="',
+
+    paste(params$main_dir, 'anArea.png"', sep = ''),
+
+  if (params$aspect_factor > 1.3) {
+    paste(' width = "600px"')
+  } else if (params$aspect_factor > 1) {
+    paste(' width = "500px"')
+  } else if (params$aspect_factor > 0.7) {
+    paste(' width = "400px"')
+  } else{
+    paste(' width = "300px"')
+  },
+  '>
       </div>
     </div>
   </div>

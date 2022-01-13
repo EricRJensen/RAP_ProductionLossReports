@@ -58,6 +58,12 @@ table.table-main tbody td{
   font-size:2rem;
 }
 
+.leaflet {
+  z-index:3;
+  width: 100% !important;
+  margin-top:10px;
+}
+
 </style>
 
 ```{r setup, include=FALSE}
@@ -75,6 +81,9 @@ library(scales)
 library(patchwork)
 library(reshape2)
 library(kableExtra)
+library(extrafont)
+font_import('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Font', prompt = FALSE)
+loadfonts(device = "win")
 ```
 
 ```{r echo = FALSE, warning = FALSE}
@@ -639,7 +648,8 @@ annYG_plot <- ggplot() +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_minimal() +
   theme(axis.title.x = element_blank(),
-        plot.title.position = "plot")
+        plot.title.position = "plot",
+        text=element_text(family='Open Sans'))
 
 cumYG_plot <- ggplot() +
   geom_line(
@@ -670,7 +680,8 @@ cumYG_plot <- ggplot() +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
   theme_minimal() +
   theme(axis.title.x = element_blank(),
-        plot.title.position = "plot")
+        plot.title.position = "plot",
+        text=element_text(family='Open Sans'))
 
 (annYG_plot | cumYG_plot)
 ```
@@ -810,22 +821,22 @@ htmltools::HTML(paste('
           <center><img src="../Assets/YieldGap.png" width="600"></center>
       </div>
     </div>
-  </div>
-  <div class="panel panel-default">
-    <div class="panel-heading" role="tab" id="headingTwo">
-      <h4 class="panel-title">
-        <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-          Calculating Tree Cover Change
-        </a>
-      </h4>
-    </div>
-    <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
-      <div class="panel-body">
-         Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href = "https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
-      </div>
-    </div>
-  </div>
-  <div class="panel panel-default">
+  </div>',
+  # <div class="panel panel-default">
+  #   <div class="panel-heading" role="tab" id="headingTwo">
+  #     <h4 class="panel-title">
+  #       <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+  #         Calculating Tree Cover Change
+  #       </a>
+  #     </h4>
+  #   </div>
+  #   <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+  #     <div class="panel-body">
+  #        Tree cover change was derived from the Rangeland Analysis Platform, which is freely available and online here at <a href = "https://rangelands.app/">rangelands.app</a>. In all cases, the reports present percent change in tree cover as absolute values. For example, a county which had 3% tree cover in 1990 and 6% tree cover in 2019 would report a 3% tree cover increase, even though the 2019 tree cover percent represents a doubling of tree cover levels in 1990.
+  #     </div>
+  #   </div>
+  # </div>
+  '<div class="panel panel-default">
     <div class="panel-heading" role="tab" id="headingThree">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
