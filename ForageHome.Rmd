@@ -1,5 +1,5 @@
 ---
-title: "Rangeland Production Lost to Woody Encroachment"
+title: "Rangeland Production Lost to Tree Encroachment"
 output: html_document
 ---
 
@@ -11,6 +11,10 @@ body{ /* Normal  */
       font-family: 'Open Sans', sans-serif;
       color: #2b2b2b;
   }
+  
+ul{
+  margin-bottom:20px;
+}
   
 .title{
     display: none;
@@ -81,6 +85,8 @@ library(scales)
 library(patchwork)
 library(reshape2)
 library(kableExtra)
+library(raster)
+library(tableHTML)
 library(extrafont)
 font_import('C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Font', prompt = FALSE)
 loadfonts(device = "win")
@@ -92,7 +98,7 @@ htmltools::HTML(
     '<div class="container">
                           <img src = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Assets/Banner_crop.jpg" height = "200px" style = "opacity: 0.7">
                           <div class="header-title">
-                          Rangeland Production Lost to<br>Woody Encroachment
+                          Rangeland Production Lost to<br>Tree Encroachment
                           </div>
                        </div>',
     sep = ''
@@ -101,12 +107,12 @@ htmltools::HTML(
 ```
 
 ## About these Reports
-Vegetation production is the most fundamental and important ecosystem service that rangelands provide, but woody encroachment is resulting in significantly diminished vegetation production in many locations. These reports build upon advances in remote sensing and vegetation modeling to provide state- and county-level estimates of the amount of rangeland production (lbs/acre) lost to woody encroachment. 
+Vegetation production is the most fundamental and important ecosystem service that rangelands provide, but tree encroachment is resulting in significantly diminished vegetation production in many locations. These reports build upon advances in remote sensing and vegetation modeling to provide state- and county-level estimates of the amount of rangeland production (lbs/acre) lost to tree encroachment. 
 
-Use the interactive map below to navigate to any of the 17 states and 1,062 counties for which we have generated reports. Learn more about the science and analysis behind these reports in the [Supplemental Information section](#supporting-information), below.
+Use the interactive map below to navigate to any of the 17 states and 1,062 counties for which we have generated reports. Learn more about the science and analysis behind these reports in the [Supporting Information section](#supporting-information), below.
 
 
-```{r echo = FALSE, warning = FALSE, message = FALSE}
+```{r echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 
 # --------- Dataframe for mapping -------------
 options(scipen = 999)
@@ -225,9 +231,9 @@ ctys_df_yg2019 <- ctys_df %>%
   mutate(
     FIPS = paste(STATEFP, COUNTYFP, sep = ''),
     yieldgap_2019_norm = yieldgap / (yieldgap + biomass) * 100,
-    pct_for = BPS_Forest / countyArea
+    pct_analysis = analysisArea / countyArea
   ) %>%
-  dplyr::select(c(FIPS, pct_for, yieldgap_2019_norm))
+  dplyr::select(c(FIPS, pct_analysis, yieldgap_2019_norm))
 
 # Join counties yield gap data back to counties sf object and subset to 2019
 ctys_sf <- ctys_sf %>%
@@ -322,10 +328,126 @@ main_df_csv <- main_df %>%
   unique()
 
 write_csv(main_df_csv, file = "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/data.csv")
+
+# Write out html analysis area table to add to report
+char_df <- tibble(init = 10)
+char_df[, 'Total area'] <-
+  paste(as.character(round(main_df$westwideArea[1]), 0), 'acres')
+char_df[, 'Analysis area'] <-
+  paste(as.character(round(main_df$analysisArea[1]), 0), 'acres')
+char_df[, 'Area excluded from analysis'] <-
+  paste(as.character(round(
+    main_df$westwideArea[1] - main_df$analysisArea[1]
+  ), 0), 'acres')
+char_df <- char_df[, 2:4]
+
+char_df <- char_df %>%
+  t() %>%
+  melt() %>%
+  mutate(Value = prettyNum(value, big.mark = ",")) %>%
+  dplyr::select(c(` ` = Var1, Area = Value))
+
+char_html <- char_df %>%
+  tableHTML(
+    widths = c(300, 200),
+    rownames = FALSE
+  ) %>%
+  add_css_row(css = list(
+    c(
+      'background-color',
+      'text-align',
+      'height',
+      'font-family',
+      'font-size',
+      'border-color'
+    ),
+    c(
+      '#FFFFFF',
+      'center',
+      '30px',
+      'Open Sans',
+      '0.9rem',
+      '#00000055 #FFFFFF00 #00000055 #FFFFFF00'
+    )
+  ), rows = 1:4)  %>%
+  add_css_caption(css = list(
+    c('font-size', 'font-family', 'text-align', 'margin-bottom'),
+    c('1rem', 'Open sans', 'left', '8px')
+  ))
+
+write_tableHTML(char_html, 'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/poly_data.html')
+
+# Analysis Area Map
+# Load westwide raster
+anArea_rast <-
+  raster(
+      'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/tif/AnalysisArea/Westwide.tif'
+  )
+
+# Convert raster to dataframe for plotting
+anArea_rast_df <-
+  raster::as.data.frame(anArea_rast, xy = TRUE) %>%
+  rename(anArea_val = 3) %>%
+  mutate(anArea = cut(
+    anArea_val,
+    breaks = c(-Inf, 0.99, 1.99, Inf),
+    labels = c(NA,
+               "Area excluded from analysis",
+               "Analysis area")
+  )) %>%
+  filter(anArea %in% c("Analysis area",
+                       "Area excluded from analysis"))
+# Factor the column for binary analyzed/not analyzed so that legend items show up in desired order
+anArea_rast_df$anArea <-
+  factor(anArea_rast_df$anArea,
+         levels = c("Analysis area",
+                    "Area excluded from analysis"))
+
+png(
+      file = 'C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/anArea.png',
+      width = 6,
+      height = 6,
+      units = "in",
+      res = 300
+    )
+anArea_map <- ggplot() +
+  geom_raster(anArea_rast_df, mapping = aes(x = x, y = y, fill = anArea)) +
+  geom_sf(
+    stas_sf,
+    mapping = aes(),
+    color = "#343434",
+    fill = "#FFFFFFFF",
+    alpha = 0,
+    size = 1
+  ) +
+  labs(
+    x = '',
+    y = ''
+  ) +
+  scale_fill_manual(values = c(
+    "Analysis area" = "#2c9e37",
+    "Area excluded from analysis" = "#e5e5e5"
+  )) +
+  theme_minimal() +
+  theme(
+    text=element_text(family='Open Sans'),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    legend.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    legend.position = "bottom"
+    
+  )
+print(anArea_map)
+dev.off()
 ```
 
 
-## Westwide Rangeland Production Lost to Woody Encroachment
+## Westwide Rangeland Production Lost to Tree Encroachment
 ```{r echo = FALSE, warning = FALSE}
 main_df_rec <- main_df %>%
   filter(year == current_year)
@@ -347,7 +469,7 @@ htmltools::HTML(
         sep = ''
       )
     ),
-    'Production lost to woody encroachment in ',
+    'Production lost to tree encroachment in ',
     current_year,
     '</h2></th></center>',
     ifelse(
@@ -361,7 +483,7 @@ htmltools::HTML(
         sep = ''
       )
     ),
-    'Cumulative production lost to woody encroachment (1990-',
+    'Cumulative production lost to tree encroachment (1990-',
     current_year,
     ')</th></center>
         </tr>
@@ -464,10 +586,10 @@ rm(i,
 # --------- Interactive map -------------
 
 # Separate forested from non forested counties using LANDFIRE BPS data
-forestThreshold = .55
-forest_ctys_sf <- filter(ctys_sf, pct_for > forestThreshold) %>%
+analysisThreshold = .15
+mask_ctys_sf <- filter(ctys_sf, pct_analysis < analysisThreshold) %>%
   st_transform(4326)
-nonFor_ctys_sf <- filter(ctys_sf, pct_for < forestThreshold) %>%
+unmask_ctys_sf <- filter(ctys_sf, pct_analysis > analysisThreshold) %>%
   st_transform(4326)
 
 # Define color ramp -- adjusting bias factor to bias more colors for higher values and stretch color ramp to non-forest counties
@@ -484,11 +606,11 @@ rampcols <-
     ),
     space = "Lab",
     bias = 2
-  )(max(nonFor_ctys_sf$yieldgap_2019_norm, na.rm = TRUE) * 1000)
+  )(max(unmask_ctys_sf$yieldgap_2019_norm, na.rm = TRUE) * 1000)
 
 pal <-
   colorNumeric(rampcols, domain = c(0, max(
-    nonFor_ctys_sf$yieldgap_2019_norm, na.rm = TRUE
+    unmask_ctys_sf$yieldgap_2019_norm, na.rm = TRUE
   )), na.color = '#ffffff')
 
 # Function to generate state labels
@@ -525,20 +647,23 @@ leaflet(
   # Control order of layer rendering
   addMapPane("labs", zIndex = 490) %>%
   addMapPane("mask_polys", zIndex = 410) %>%
-  addMapPane("for_polys", zIndex = 420) %>%
-  addMapPane("nonFor_polys", zIndex = 430) %>%
+  addMapPane("mask2_polys", zIndex = 420) %>%
+  addMapPane("unmask_polys", zIndex = 430) %>%
   # State labels and on-click objects
   addPolygons(
     data = stas_sf,
-    fillColor = '#FFFFFFFF',
+    fillColor = '#FFFFFF',
     color = '#424242',
-    fillOpacity = 0,
+    fillOpacity = 0.1,
     opacity = 1,
     weight = 2,
     smoothFactor = 0.5,
+    highlightOptions = highlightOptions(weight = 3, sendToBack = T, fillOpacity = 0),
     label = lapply(labs, htmltools::HTML),
     options = pathOptions(pane = "labs"),
     labelOptions = labelOptions(
+      direction = "bottom",
+      offset = c(0,10),
       style = list(
         "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
         "font-size" = "13px",
@@ -548,34 +673,34 @@ leaflet(
   ) %>%
   # Forest mask
   addPolygons(
-    data = forest_ctys_sf,
+    data = mask_ctys_sf,
     fillColor = 'grey',
-    fillOpacity = 0.85,
-    color = '#929292',
+    fillOpacity = 0.9,
+    opacity = 0,
     smoothFactor = 0.5,
     options = pathOptions(pane = "mask_polys")
   ) %>%
   # County choropleths, forested
   addPolygons(
-    data = forest_ctys_sf,
+    data = mask_ctys_sf,
     fillColor = ~ pal(yieldgap_2019_norm),
-    color = '#929292',
+    color = '#575757',
     weight = 1,
     opacity = 1,
-    fillOpacity = .4,
+    fillOpacity = 0,
     smoothFactor = 0.5,
-    options = pathOptions(pane = "for_polys")
+    options = pathOptions(pane = "mask2_polys")
   ) %>%
   # County choropleths, non-forested
   addPolygons(
-    data = nonFor_ctys_sf,
+    data = unmask_ctys_sf,
     fillColor = ~ pal(yieldgap_2019_norm),
-    color = '#929292',
+    color = '#575757',
     weight = 1,
     opacity = 1,
-    fillOpacity = 0.85,
+    fillOpacity = 0.9,
     smoothFactor = 0.5,
-    options = pathOptions(pane = "nonFor_polys")
+    options = pathOptions(pane = "unmask_polys")
   ) %>%
   addLegend(
     title = "Masked areas",
@@ -586,7 +711,7 @@ leaflet(
   addLegend(
     position = "bottomleft",
     pal = pal,
-    values = sort(nonFor_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
+    values = sort(unmask_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
     title = "Production<br>losses in 2019",
     labFormat = labelFormat(suffix = '%'),
     opacity = .8,
@@ -800,22 +925,22 @@ htmltools::HTML(paste('
     <div class="panel-heading" role="tab" id="headingOne">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-          Calculating Rangeland Rangeland Production Losses to Woody Encroachment
+          Calculating Rangeland Rangeland Production Losses to Tree Encroachment
         </a>
       </h4>
     </div>
     <div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
       <div class="panel-body">
-      The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries. 
+      The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual tree encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries. 
           <br>
           <br>
-          Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes rangeland production losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
+          Tree encroachment is the most commonly used scientific term internationally to describe the increase of tree plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes rangeland production losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
           <br>
           <br>
-          Vegetation productivity is the most fundamental and important metric in rangelands and measuring losses in rangeland production to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
+          Vegetation productivity is the most fundamental and important metric in rangelands and measuring losses in rangeland production to tree encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by tree encroachment.
           <br>
           <br>
-          The production loss statistics and figures presented in these reports are derived from the analysis in <a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below. 
+          The production loss statistics and figures presented in these reports are derived from the analysis in <a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v3" target="_blank">Tree encroachment threatens the conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below. 
           <br>
           <br>
           <center><img src="../Assets/YieldGap.png" width="600"></center>
@@ -850,9 +975,13 @@ htmltools::HTML(paste('
         <br>
         <ul>
         <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
-        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers.</li>
-        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
+        <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except lands labeled as 1) "cultivated" in the National Agricultural Statistics Service (NASS) Cropland Data Layers, 2) "developed" in the 2016 National Land Cover Database (NLCD), and 3) "historically forested" in the LANDFIRE Biophysical Settings (BpS).</li>
+        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated (NASS), 2) developed (NLCD), and 3) historically forested (BpS).</li>
         </ul>
+        <h4><strong>Westwide analysis area summary </h4></strong>
+        <object type="text/html" data="C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/poly_data.html" width=800 height=145></object>
+                <h4><strong>Westwide analysis area map </h4></strong>
+        <img src="C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/Outputs/anArea.png" width = "600px">
       </div>
     </div>
   </div>
@@ -869,8 +998,8 @@ htmltools::HTML(paste('
       <ul>
       <li><a href = "https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree" target="_blank">View tree cover data in the Rangeland Analysis Platform web application. </a></li>
       <li><a href="./data.csv" target="_blank">Download the data table used to produce this report. </a></li>
-      <li><a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
-      <li><a href = "https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage woody encroachment and reduce the risk and vulnerability to rangeland production. </a></li>
+      <li><a href = "https://www.biorxiv.org/content/10.1101/2021.04.02.438282v3" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
+      <li><a href = "https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage tree encroachment and reduce the risk and vulnerability to rangeland production. </a></li>
       <li>Learn more about the NRCS Working Lands for Wildlife strategy on Woodland Expansion in the <a href = "https://wlfw.rangelands.app/great-plains/woodland-expansion/" target="_blank">Great Plains</a> and <a href = "https://wlfw.rangelands.app/sagebrush/woodland-expansion/" target="_blank">Sagebrush biomes. </a></li>
       </ul>
       </div>

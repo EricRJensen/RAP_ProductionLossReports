@@ -6,8 +6,8 @@ params:
   cty_sf: params$cty_sf
   sta_sf: params$sta_sf
   sta_ctys_sf: params$sta_ctys_sf
-  range_sta_ctys_sf: params$range_sta_ctys_sf
-  forest_sta_ctys_sf: params$forest_sta_ctys_sf
+  unmask_sta_ctys_sf: params$unmask_sta_ctys_sf
+  masked_sta_ctys_sf: params$masked_sta_ctys_sf
   current_year: params$current_year
   rap_url: params$rap_url
   main_dir: params$main_dir
@@ -140,7 +140,7 @@ htmltools::HTML(
                           <div class="header-title">',
     params$new_title,
     '</div>
-                          <div class="header-subtitle">Rangeland Production Lost to Woody Encroachment</div>
+                          <div class="header-subtitle">Rangeland Production Lost to Tree Encroachment</div>
                        </span>',
     sep = ''
   )
@@ -186,7 +186,7 @@ cty_name = ifelse(params$type == 'County', str_split(loc_name, ',')[[1]][1], '')
 
 <!-- > ##### ***[Click here to download this report as a PDF.](./index.pdf)*** -->
 
-# Rangeland Production Lost to Woody Encroachment
+# Rangeland Production Lost to Tree Encroachment
 ```{r echo = FALSE, warning = FALSE}
 main_df_rec <- params$main_df %>%
   filter(year == params$current_year)
@@ -208,7 +208,7 @@ htmltools::HTML(
         sep = ''
       )
     ),
-    'Production lost to woody encroachment in ',
+    'Production lost to tree encroachment in ',
     params$current_year,
     '</h2></th></center>',
     ifelse(
@@ -222,7 +222,7 @@ htmltools::HTML(
         sep = ''
       )
     ),
-    'Cumulative production lost to woody encroachment (1990-',
+    'Cumulative production lost to tree encroachment (1990-',
     params$current_year,
     ')</th></center>
         </tr>
@@ -304,9 +304,9 @@ rampcols <-
     ),
     space = "Lab",
     bias = 2
-  )(max(params$range_sta_ctys_sf$yieldgap_curYear_norm) * 1000)
+  )(max(params$unmask_sta_ctys_sf$yieldgap_curYear_norm) * 1000)
 pal <-
-  colorNumeric(rampcols, domain = c(0, max(range_ctys_sf$yieldgap_curYear_norm)), na.color = '#ffffff')
+  colorNumeric(rampcols, domain = c(0, max(unmask_ctys_sf$yieldgap_curYear_norm)), na.color = '#ffffff')
 
 # Functions to generate labels
 labs <- lapply(seq(nrow(sta_ctys_sf)), function(i) {
@@ -393,11 +393,17 @@ if (params$type == 'County') {
     # County polygons with labels and on-click
     addPolygons(
       data = params$sta_ctys_sf,
-      fillOpacity = 0,
-      opacity = 0,
+      fillColor = '#FFFFFF',
+      color = '#1f1f1f',
+      fillOpacity = 0.1,
+      opacity = 0.2,
+      weight = 1,
       options = pathOptions(pane = "labs"),
+      highlightOptions = highlightOptions(fillOpacity = 0, opacity = 0, sendToBack = TRUE),
       label = lapply(labs, htmltools::HTML),
       labelOptions = labelOptions(
+        direction = "bottom",
+        offset = c(0,10),
         style = list(
           "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
           "font-size" = "13px",
@@ -407,26 +413,27 @@ if (params$type == 'County') {
     ) %>%
     #County mask
     addPolygons(
-      data = params$forest_sta_ctys_sf,
+      data = params$masked_sta_ctys_sf,
       fillColor = 'grey',
       fillOpacity = 1,
+      weight = 1,
       color = '#2b2b2b',
       smoothFactor = 0.5,
       options = pathOptions(pane = "forest_mask")
     ) %>%
     #County choropleths
     addPolygons(
-      data = params$forest_sta_ctys_sf,
+      data = params$masked_sta_ctys_sf,
       fillColor = ~ pal(yieldgap_curYear_norm),
       color = '#2b2b2b',
       weight = 1,
       opacity = 1,
-      fillOpacity = .4,
+      fillOpacity = 0,
       smoothFactor = 0.5,
       options = pathOptions(pane = "forest_polys")
     ) %>%
     addPolygons(
-      data = params$range_sta_ctys_sf,
+      data = params$unmask_sta_ctys_sf,
       fillColor = ~ pal(yieldgap_curYear_norm),
       color = '#2b2b2b',
       weight = 1,
@@ -456,6 +463,8 @@ if (params$type == 'County') {
       smoothFactor = 0.5,
       options = pathOptions(pane = "cty_outline"),
       labelOptions = labelOptions(
+              direction = "bottom",
+              offset = c(0,10),
         style = list(
           "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
           "font-size" = "13px",
@@ -467,7 +476,7 @@ if (params$type == 'County') {
       position = "bottomright",
       pal = pal,
       values = c(0, max(
-        params$range_sta_ctys_sf$yieldgap_curYear_norm
+        params$unmask_sta_ctys_sf$yieldgap_curYear_norm
       )),
       title = paste("Production<br>loss in ", params$current_year),
       opacity = 1,
@@ -517,11 +526,17 @@ if (params$type == 'County') {
     # County polygons with labels and on-click
     addPolygons(
       data = params$sta_ctys_sf,
-      fillOpacity = 0,
-      opacity = 0,
+      fillColor = '#FFFFFF',
+      color = '#1f1f1f',
+      fillOpacity = 0.1,
+      opacity = 0.2,
+      weight = 1,
       options = pathOptions(pane = "labs"),
+      highlightOptions = highlightOptions(fillOpacity = 0, opacity = 0, sendToBack = TRUE),
       label = lapply(labs, htmltools::HTML),
-      labelOptions = labelOptions(
+      labelOptions = labelOptions(      
+        direction = "bottom",
+        offset = c(0,10),
         style = list(
           "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
           "font-size" = "13px",
@@ -531,26 +546,27 @@ if (params$type == 'County') {
     ) %>%
     #County mask
     addPolygons(
-      data = params$forest_sta_ctys_sf,
+      data = params$masked_sta_ctys_sf,
       fillColor = 'grey',
       fillOpacity = 1,
       color = '#2b2b2b',
+      weight = 1,
       smoothFactor = 0.5,
       options = pathOptions(pane = "forest_mask")
     ) %>%
     #County choropleths
     addPolygons(
-      data = params$forest_sta_ctys_sf,
+      data = params$masked_sta_ctys_sf,
       fillColor = ~ pal(yieldgap_curYear_norm),
       color = '#2b2b2b',
       weight = 1,
       opacity = 1,
-      fillOpacity = .4,
+      fillOpacity = 0,
       smoothFactor = 0.5,
       options = pathOptions(pane = "forest_polys")
     ) %>%
     addPolygons(
-      data = params$range_sta_ctys_sf,
+      data = params$unmask_sta_ctys_sf,
       fillColor = ~ pal(yieldgap_curYear_norm),
       color = '#2b2b2b',
       weight = 1,
@@ -574,7 +590,7 @@ if (params$type == 'County') {
       position = "bottomright",
       pal = pal,
       values = c(0, max(
-        params$range_sta_ctys_sf$yieldgap_curYear_norm
+        params$unmask_sta_ctys_sf$yieldgap_curYear_norm
       )),
       title = paste("Production<br>loss in ", params$current_year),
       labFormat = labelFormat(suffix = '%'),
@@ -874,7 +890,7 @@ HTML('<a href="./data.csv" target="_blank">Download the data table used to produ
 </div>
 
 |
-# Supplemental Information
+# Supporting Information
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
 htmltools::HTML(
   paste(
@@ -883,22 +899,22 @@ htmltools::HTML(
     <div class="panel-heading" role="tab" id="headingTwo">
       <h4 class="panel-title">
         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-          Calculating Rangeland Production Losses to Woody Encroachment
+          Calculating Rangeland Production Losses to Tree Encroachment
         </a>
       </h4>
     </div>
     <div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
       <div class="panel-body">
-        The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual woody encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries.
+        The Working Lands for Wildlife (WLFW) science team maintains a woodland expansion database to track annual tree encroachment and resulting losses of herbaceous production in rangelands. Here, these data are presented as national, state, and county summaries.
         <br>
         <br>
-        Woody encroachment is the most commonly used scientific term internationally to describe the increase of woody plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes production losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
+        Tree encroachment is the most commonly used scientific term internationally to describe the increase of tree plants at the expense of herbaceous plants in grass-dominated ecosystems. We therefore use this term in this report, but we acknowledge the importance of local and regional terminology that may better contextualize this process in rangelands. Around the world, expansion, invasion, infill, encroachment, colonization, state transitions or regime shifts are used to characterize this biological process. Ultimately, this model characterizes production losses in rangelands due to increases in trees - irrespective of the regional distinctions used to describe the process.
         <br>
         <br>
-        Vegetation productivity is the most fundamental and important metric in rangelands and measuring losses in rangeland production to woody encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by woody encroachment.
+        Vegetation productivity is the most fundamental and important metric in rangelands and measuring losses in rangeland production to tree encroachment at multiple scales has been one of the major knowledge gaps in the rangeland discipline. Wildlife, livestock, and many ecosystem services rely on herbaceous production (i.e., the combined production of grasses and forbs) that is being displaced by tree encroachment.
         <br>
         <br>
-        The production loss statistics and figures presented in these reports are derived from the analysis in <a href="https://www.biorxiv.org/content/10.1101/2021.04.02.438282v1.abstract">Biome-scale woody encroachment threatens conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a
+        The production loss statistics and figures presented in these reports are derived from the analysis in <a href="https://www.biorxiv.org/content/10.1101/2021.04.02.438282v3" target="_blank">Tree encroachment threatens the conservation potential and sustainability of U.S. rangelands</a>. In this report, estimates of production losses are directly related to tree cover change based on a 1990 baseline, and changes are not the result of climatic or land use factors (which the analysis accounts for). In short, the values presented in these reports represent the difference between the production that would have been achievable given stable tree cover since 1990 vs. observed production estimated using a
         satellite-derived dataset. This is referred to as a yield gap, as depicted in the plot below.
         <br>
         <br>
@@ -934,9 +950,8 @@ htmltools::HTML(
         <p>These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for:</p>
         <ul>
           <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
-          <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except 1) cultivated and 2) developed lands as labeled in the National Land Cover Database
-            (2016) (NLCD) and the National Agricultural Statistics Service (NASS) Cropland Data Layers</li>
-          <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated and 2) developed lands by the NLCD and NASS datasets.</li>
+          <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except lands labeled as 1) "cultivated" in the National Agricultural Statistics Service (NASS) Cropland Data Layers, 2) "developed" in the 2016 National Land Cover Database (NLCD), and 3) "historically forested" in the LANDFIRE Biophysical Settings (BpS).</li>
+        <li><b>Area excluded from analysis:</b> The land area removed from this analysis. Specifically, this is the total area labeled as 1) cultivated (NASS), 2) developed (NLCD), and 3) historically forested (BpS).</li>
         </ul>
         <h4><strong>Analysis area summary for ',
   paste(params$new_title),
@@ -982,8 +997,8 @@ htmltools::HTML(
         </ul>
         <p>Supplemental information about tree encroachment on rangelands:</p>
         <ul>
-          <li><a href="https://rangelands.app/rap/?biomass_t=herbaceous&ll=38.8633,-110.4298&z=5&landcover_t=tree" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
-          <li><a href="https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage woody encroachment and reduce the risk and vulnerability to rangeland production.
+          <li><a href="https://www.biorxiv.org/content/10.1101/2021.04.02.438282v3" target="_blank">Read the manuscript that describes the modeling process for these reports. </a></li>
+          <li><a href="https://wlfw.rangelands.app/assets/greatPlainsMaterials/E-1054WoodyEncroachment.pdf" target="_blank">Learn new guidance on how to better manage tree encroachment and reduce the risk and vulnerability to rangeland production.
             </a></li>
           <li>Learn more about the NRCS Working Lands for Wildlife strategy on Woodland Expansion in the <a href="https://wlfw.rangelands.app/great-plains/woodland-expansion/" target="_blank">Great Plains</a> and <a
               href="https://wlfw.rangelands.app/sagebrush/woodland-expansion/" target="_blank">Sagebrush biomes. </a></li>
