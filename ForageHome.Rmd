@@ -107,9 +107,9 @@ htmltools::HTML(
 ```
 
 ## About these Reports
-Vegetation production is the most fundamental and important ecosystem service that rangelands provide, but tree encroachment is resulting in significantly diminished vegetation production in many locations. These reports build upon advances in remote sensing and vegetation modeling to provide state- and county-level estimates of the amount of rangeland production (lbs/acre) lost to tree encroachment. 
+Herbaceous production is central to the function and structure of rangelands and the ecosystem services they provide. Tree encroachment of rangelands significantly reduces herbaceous production as trees out-compete grasses and forbs for limited resources. This lost production has cascading impacts on food and fiber provisioning, habitat quality, water storage, and biodiversity for endemic rangeland species. 
 
-Use the interactive map below to navigate to any of the 17 states and 1,062 counties for which we have generated reports. Learn more about the science and analysis behind these reports in the [Supporting Information section](#supporting-information), below.
+These reports build upon recent advances in remote sensing and vegetation modeling to provide state- and county-level estimates for rangeland production lost to tree encroachment. Use the interactive map below to navigate to any of the 17 states and 1,062 counties for which we have data. Learn more about the science and analysis behind these reports in the [Supporting Information section](#supporting-information), below.
 
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
@@ -317,12 +317,12 @@ main_df_csv <- main_df %>%
       yieldGap = yieldgap,
       cumYieldGap,
       treeCover,
-      treeArea,
-      classWoodlands,
-      classModCover,
-      classLowCover,
-      classAtRisk,
-      classIntact
+      treeArea
+      # classWoodlands,
+      # classModCover,
+      # classLowCover,
+      # classAtRisk,
+      # classIntact
     )
   ) %>%
   unique()
@@ -586,11 +586,21 @@ rm(i,
 # --------- Interactive map -------------
 
 # Separate forested from non forested counties using LANDFIRE BPS data
-analysisThreshold = .15
-mask_ctys_sf <- filter(ctys_sf, pct_analysis < analysisThreshold) %>%
-  st_transform(4326)
-unmask_ctys_sf <- filter(ctys_sf, pct_analysis > analysisThreshold) %>%
-  st_transform(4326)
+# Initial mask prior to selection by WLFW Science Team
+# analysisThreshold = .15
+# mask_ctys_sf <- filter(ctys_sf, pct_analysis < analysisThreshold) %>%
+#   st_transform(4326)
+# unmask_ctys_sf <- filter(ctys_sf, pct_analysis > analysisThreshold) %>%
+#   st_transform(4326)
+
+# Read in CSV informed by initial mask and selection by WLFW Science Team
+mask_ctys_df <-
+  read_csv(
+    "C:/Users/eric/Documents/NTSG/Projects/RAP/Scripts/CountyForage/data/csv/Mask_BPSandExpert_2022012022.csv"
+  )
+mask_ctys_sf <- filter(ctys_sf, FIPS %in% mask_ctys_df$FIPS)
+`%notin%` <- Negate(`%in%`)
+unmask_ctys_sf <- filter(ctys_sf, FIPS %notin% mask_ctys_df$FIPS)
 
 # Define color ramp -- adjusting bias factor to bias more colors for higher values and stretch color ramp to non-forest counties
 rampcols <-
@@ -706,12 +716,12 @@ leaflet(
     title = "Masked areas",
     position = "bottomright",
     colors = c('grey'),
-    labels = c("Primarily forest or crop")
+    labels = c("Primarily forested historically")
   ) %>%
   addLegend(
     position = "bottomleft",
     pal = pal,
-    values = sort(unmask_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840],
+    values = c(0, sort(unmask_ctys_sf$yieldgap_2019_norm, decreasing = TRUE)[1:840]),
     title = "Production<br>losses in 2019",
     labFormat = labelFormat(suffix = '%'),
     opacity = .8,
@@ -742,7 +752,7 @@ leaflet(
 </div>
 
 ### Rangeland Production Losses Plots
-*The plots below depict herbaceous production losses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(current_year)`. The annual plot displays the same information as the map above. In instances where tree cover has declined, rangeland production may increase.*
+*The plots below show herbaceous production lost to tree cover expansion on an annual (left) and cumulative (right) basis for years 1990- `r as.character(current_year)`. The annual plot displays the same information as the map above. Rangeland production may increase when tree cover has declined due to disturbance or management.*
 ```{r echo = FALSE, fig.height=5}
 annYG_plot <- ggplot() +
   geom_line(
@@ -971,7 +981,7 @@ htmltools::HTML(paste('
     </div>
     <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
       <div class="panel-body">
-        These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for: 
+        These reports estimate rangeland production losses on lands that historically functioned as rangelands. Within historical rangelands, areas heavily modified by row-crop agriculture and the built environment are excluded. We provide additional information regarding rangeland classification below. Report statistics include:  
         <br>
         <ul>
         <li><b>Total area:</b> The total area of the state or county covered by the report.</li>

@@ -487,7 +487,7 @@ if (params$type == 'County') {
       title = "Masked areas",
       position = "bottomleft",
       colors = c('grey'),
-      labels = c("Primarily forest or crop")
+      labels = c("Primarily forested historically")
     ) %>%
     setMapWidgetStyle(list(background = "white")) %>%
     htmlwidgets::onRender(jsOnClick) %>%
@@ -601,7 +601,7 @@ if (params$type == 'County') {
     title = "Masked areas",
     position = "bottomleft",
     colors = c('grey'),
-    labels = c("Primarily forest or crop")
+    labels = c("Primarily forested historically")
   ) %>%
     setMapWidgetStyle(list(background = "white")) %>%
     htmlwidgets::onRender(jsOnClick) %>%
@@ -629,7 +629,7 @@ if (params$type == 'County') {
 </div>
 
 ### Rangeland Production Losses Plots
-*The plots below depict herbaceous productionlosses resulting from tree cover change on an annually (left) and cumulatively (right) for the period of 1990-`r as.character(params$current_year)`. The annual plot displays the same information as the map above. In instances where tree cover has declined, rangeland production may increase.*
+*The plots below show herbaceous production lost to tree cover expansion on an annual (left) and cumulative (right) basis for years 1990 - `r as.character(params$current_year)`. The annual plot displays the same information as the map above. Rangeland production may increase when tree cover has declined due to disturbance or management.*
 ```{r echo = FALSE, warning = FALSE, fig.width=10}
 # Annual yield gap plot
 annYG_plot <- ggplot() +
@@ -947,7 +947,7 @@ htmltools::HTML(
     <div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
       <div class="panel-body">
       <h4><strong>Areas analyzed in these reports</h4></strong>
-        <p>These reports estimate rangeland production changes for “less intensively modified areas” across the western US and, thus, exclude some land cover types from analysis. Statistics in the report are provided for:</p>
+        <p>These reports estimate rangeland production losses on lands that historically functioned as rangelands. Within historical rangelands, areas heavily modified by row-crop agriculture and the built environment are excluded. We provide additional information regarding rangeland classification below. Report statistics include:</p>
         <ul>
           <li><b>Total area:</b> The total area of the state or county covered by the report.</li>
           <li><b>Analysis area:</b> The land area used to generate the data found in this report. All land cover classes were included in this analysis except lands labeled as 1) "cultivated" in the National Agricultural Statistics Service (NASS) Cropland Data Layers, 2) "developed" in the 2016 National Land Cover Database (NLCD), and 3) "historically forested" in the LANDFIRE Biophysical Settings (BpS).</li>
